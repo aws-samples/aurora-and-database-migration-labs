@@ -1,0 +1,555 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CloudFormation Template to create Aurora MySQL Serverless for Data API Live Demo'
+
+###############################################################################
+# Parameters 
+###############################################################################   
+
+Parameters:
+  VPCClassB:
+    Description: 'Specify the 2nd Octet of IPv4 CIDR block for the VPC (10.XXX.0.0/16) in the range [0-255]'
+    Type: Number
+    Default: 0
+    ConstraintDescription: 'Must be in the range [0-255]'
+    MinValue: 0
+    MaxValue: 255
+    
+  DBUsername:
+    Description: Database master username
+    Type: String
+    MinLength: '1'
+    MaxLength: '16'
+    AllowedPattern: "^[a-zA-Z]+[0-9a-zA-Z_]*$"
+    ConstraintDescription: Must start with a letter. Only numbers, letters, and _ accepted. max length 16 characters
+
+  AmazonPinpointProjectID:
+    Description: Specify the Amazon Pinpoint Project ID
+    Type: String
+    AllowedPattern: "^[a-zA-Z0-9]+$"
+    ConstraintDescription:  provide a valid project ID
+
+  AmazonPinpointLongCode:
+    Description: Specify the Amazon PinPoint Long Code in +1xxxxxxxxxx format
+    Type: String
+    AllowedPattern: "^[+][1][0-9]{10}"
+    ConstraintDescription:  provide a valid Amazon Pinpoint Long Code
+  
+  AmazonPinPointSNSArn:
+    Description: Specify the Amazon Pinpoint Incoming Message Destination SNS Topic ARN
+    Type: String
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: VPC Configuration
+        Parameters:
+          - VPCClassB
+      - Label:
+          default: Aurora Serverless Configuration
+        Parameters:
+          - DBUsername
+      - Label:
+          default: Amazon PinPoint Configuration
+        Parameters:
+          - AmazonPinpointProjectID
+          - AmazonPinpointLongCode
+          - AmazonPinPointSNSArn
+
+    ParameterLabels:
+      VPCClassB:
+        default: VPC ClassB 2nd Octet
+      DBUsername:
+        default: Aurora Serverless Master UserName
+        
+  
+###############################################################################
+# Resources 
+###############################################################################   
+    
+Resources:
+  VPC:
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      CidrBlock: !Sub '10.${VPCClassB}.0.0/16'
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      InstanceTenancy: default
+      Tags:
+      - Key: Name
+        Value: !Sub '${AWS::StackName}-VPC'
+
+  InternetGateway:
+    Type: 'AWS::EC2::InternetGateway'
+    Properties:
+      Tags:
+      - Key: Name
+        Value: !Sub '10.${VPCClassB}.0.0/16'
+
+  VPCGatewayAttachment:
+    Type: 'AWS::EC2::VPCGatewayAttachment'
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  NATEIPA:
+    DependsOn: VPCGatewayAttachment
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc  
+
+  NATEIPB:
+    DependsOn: VPCGatewayAttachment
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc  
+ 
+  NATEIPC:
+    DependsOn: VPCGatewayAttachment
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc  
+
+  SubnetAPublic:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      AvailabilityZone: !Select [0, !GetAZs '']
+      CidrBlock: !Sub '10.${VPCClassB}.0.0/20'
+      MapPublicIpOnLaunch: true
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: !Join
+                 - '_'
+                 - - !Sub '10.${VPCClassB}.0.0/16'
+                   - !Select [0, !GetAZs '']
+                   - 'Public'
+      - Key: Reach
+        Value: public      
+      
+  SubnetAPrivate:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      AvailabilityZone: !Select [0, !GetAZs '']
+      CidrBlock: !Sub '10.${VPCClassB}.16.0/20'
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: !Join
+                 - '_'
+                 - - !Sub '10.${VPCClassB}.0.0/16'
+                   - !Select [0, !GetAZs '']
+                   - 'Private'
+      - Key: Reach
+        Value: private
+        
+  SubnetBPrivate:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      AvailabilityZone: !Select [1, !GetAZs '']
+      CidrBlock: !Sub '10.${VPCClassB}.48.0/20'
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: !Join
+                 - '_'
+                 - - !Sub '10.${VPCClassB}.0.0/16'
+                   - !Select [1, !GetAZs '']
+                   - 'Private'
+      - Key: Reach
+        Value: private
+ 
+  SubnetCPrivate:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      AvailabilityZone: !Select [2, !GetAZs '']
+      CidrBlock: !Sub '10.${VPCClassB}.80.0/20'
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: !Join
+                 - '_'
+                 - - !Sub '10.${VPCClassB}.0.0/16'
+                   - !Select [2, !GetAZs '']
+                   - 'Private'
+      - Key: Reach
+        Value: private
+
+  RouteTablePublic:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: !Join
+                 - '_'
+                 - - !Sub '10.${VPCClassB}.0.0/16'
+                   - 'Public' 
+                   
+  RouteTableAPrivate:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: !Join
+                 - '_'
+                 - - !Sub '10.${VPCClassB}.0.0/16'
+                   - !Select [0, !GetAZs '']
+                   - 'Private'
+        
+  RouteTableBPrivate:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: !Join
+                 - '_'
+                 - - !Sub '10.${VPCClassB}.0.0/16'
+                   - !Select [1, !GetAZs '']
+                   - 'Private'
+
+  RouteTableCPrivate:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: !Join
+                 - '_'
+                 - - !Sub '10.${VPCClassB}.0.0/16'
+                   - !Select [2, !GetAZs '']
+                   - 'Private'
+                   
+  RouteTableAssociationAPublic:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref SubnetAPublic
+      RouteTableId: !Ref RouteTablePublic
+      
+  RouteTableAssociationAPrivate:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref SubnetAPrivate
+      RouteTableId: !Ref RouteTableAPrivate
+
+  RouteTableAssociationBPrivate:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref SubnetBPrivate
+      RouteTableId: !Ref RouteTableBPrivate
+
+  RouteTableAssociationCPrivate:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref SubnetCPrivate
+      RouteTableId: !Ref RouteTableCPrivate
+
+  RouteTablePublicInternetRoute:
+    Type: 'AWS::EC2::Route'
+    DependsOn: VPCGatewayAttachment
+    Properties:
+      RouteTableId: !Ref RouteTablePublic
+      DestinationCidrBlock: '0.0.0.0/0'
+      GatewayId: !Ref InternetGateway
+ 
+  NATGatewayA:
+    DependsOn: VPC
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt [NATEIPA,AllocationId]      
+      SubnetId: !Ref SubnetAPublic
+      Tags:
+      - Key: Name
+        Value: !Join
+                 - '_'
+                 - - !Sub '10.${VPCClassB}.0.0/16'
+                   - !Select [0, !GetAZs '']
+                   - 'NGW'
+                   
+  RouteTablePrivateANATRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref RouteTableAPrivate
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NATGatewayA
+
+  RouteTablePrivateBNATRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref RouteTableBPrivate
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NATGatewayA
+
+  RouteTablePrivateCNATRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref RouteTableCPrivate
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NATGatewayA
+      
+  DBSubnetGroup:
+    Type: 'AWS::RDS::DBSubnetGroup'
+    Properties:
+      DBSubnetGroupDescription: !Ref 'AWS::StackName'
+      SubnetIds:
+        - !Ref SubnetAPrivate
+        - !Ref SubnetBPrivate
+        - !Ref SubnetCPrivate
+
+  SecretsManagerVPCEndpoint:
+    Type: 'AWS::EC2::VPCEndpoint'
+    Properties:
+      VpcEndpointType: 'Interface'
+      PrivateDnsEnabled: true
+      VpcId: !Ref VPC
+      SubnetIds:
+        - !Ref SubnetAPrivate
+        - !Ref SubnetBPrivate
+        - !Ref SubnetCPrivate 
+      SecurityGroupIds:
+        - !Ref AuroraServerlessSecurityGroup
+      ServiceName: !Join 
+        - ''
+        - - com.amazonaws.
+          - !Ref 'AWS::Region'
+          - .secretsmanager
+          
+                  
+  CityVoteHandlerLambdaRole:                                                                         
+    Type: AWS::IAM::Role                                                                             
+    Properties:                                                                                      
+      AssumeRolePolicyDocument:                                                                      
+        Version: "2012-10-17"                                                                        
+        Statement:                                                                                   
+          -                                                                                          
+            Effect: "Allow"                                                                          
+            Principal:                                                                               
+              Service:                                                                               
+                - lambda.amazonaws.com                                                               
+            Action:                                                                                  
+              - "sts:AssumeRole"                                                                     
+      Path: "/"                                                                                      
+      ManagedPolicyArns:                                                                             
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole                           
+      Policies:                                                                                      
+        -                                                                                            
+          PolicyName: "AdditionalAccess"                                                             
+          PolicyDocument:                                                                            
+            Version: "2012-10-17"                                                                    
+            Statement:                                                                               
+              -                                                                                      
+                Effect: "Allow"                                                                      
+                Action: "rds-data:ExecuteSql"                                                        
+                Resource: !Join [':', ['arn:aws:rds', !Ref 'AWS::Region', !Ref 'AWS::AccountId', 'cluster', !Ref AuroraDBCluster]] 
+              - 
+                Effect: "Allow"
+                Action: "mobiletargeting:SendMessages"
+                Resource: !Join [':', ['arn:aws:mobiletargeting', !Ref 'AWS::Region', !Ref 'AWS::AccountId', !Sub 'apps/${AmazonPinpointProjectID}/messages']]
+              - 
+                Effect: "Allow"
+                Action: "secretsmanager:GetSecretValue"
+                Resource: !Ref AuroraMasterSecret 
+         
+  DBBootStrapLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: 
+              - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: "/"
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole'
+      Policies:
+        - 
+          PolicyName: "secretaccess"
+          PolicyDocument: 
+            Version: "2012-10-17"
+            Statement: 
+              - 
+                Effect: "Allow"
+                Action: "secretsmanager:GetSecretValue"
+                Resource: !Ref AuroraMasterSecret
+        
+  AuroraServerlessSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription:  !Join [ " - ", [ "Security group for Aurora Serverless", !Ref 'AWS::StackName' ] ]
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: !Sub '${AWS::StackName}-AuroraServerlessSecurityGroup'
+        
+  AuroraServerlessSecurityGroupIngress:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Properties:
+      GroupId: !GetAtt 'AuroraServerlessSecurityGroup.GroupId'
+      IpProtocol: -1
+      SourceSecurityGroupId: !GetAtt 'AuroraServerlessSecurityGroup.GroupId'
+      Description: 'Self Reference'         
+ 
+  AuroraMasterSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Join ['/', ['AuroraSL', !Ref 'AWS::StackName', 'master']]
+      Description: !Join ['', ['Aurora PostgreSQL Master User Secret for CloudFormation Stack ', !Ref 'AWS::StackName']]
+      Tags:
+        -
+          Key: DatabaseEngine
+          Value: 'Aurora MySQL Serverless'
+        -
+          Key: StackID
+          Value: !Ref 'AWS::StackId'
+      GenerateSecretString:
+        SecretStringTemplate: !Join ['', ['{"username": "', !Ref DBUsername, '"}']]
+        GenerateStringKey: "password"
+        ExcludeCharacters: '"@/\'
+        PasswordLength: 16
+
+  SecretAuroraClusterAttachment:
+    Type: AWS::SecretsManager::SecretTargetAttachment
+    Properties:
+      SecretId: !Ref AuroraMasterSecret
+      TargetId: !Ref AuroraDBCluster
+      TargetType: AWS::RDS::DBCluster
+
+  AuroraSecretResourcePolicy:
+    Type: AWS::SecretsManager::ResourcePolicy
+    Properties:
+      SecretId: !Ref AuroraMasterSecret
+      ResourcePolicy:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Deny"
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action: "secretsmanager:DeleteSecret"
+            Resource: "*"
+        
+  AuroraDBCluster:
+    Type: AWS::RDS::DBCluster
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
+    Properties:
+      Engine: aurora
+      EngineMode: serverless
+      MasterUsername: !Join ['', ['{{resolve:secretsmanager:', !Ref AuroraMasterSecret, ':SecretString:username}}' ]]
+      MasterUserPassword: !Join ['', ['{{resolve:secretsmanager:', !Ref AuroraMasterSecret, ':SecretString:password}}' ]]
+      VpcSecurityGroupIds:
+      - !GetAtt 'AuroraServerlessSecurityGroup.GroupId'
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      ScalingConfiguration:
+        AutoPause: True
+        MaxCapacity: 32
+        MinCapacity: 2
+        SecondsUntilAutoPause: 300        
+
+  DBBootStrapLambdaFn:
+    Type: AWS::Lambda::Function
+    DependsOn:
+      - DBBootStrapLambdaRole
+    Properties:
+      Code:
+        S3Bucket: 'aslbootstrap-us-east-1'
+        S3Key: 'aslbootstrap/aslbootstrap.zip'
+      Description: >-
+          BootStrap newly Created Aurora MySQL Serverless Cluster for Data API Live Demo
+      Handler: aslbootstrap.handler
+      MemorySize: 128
+      Role: !GetAtt DBBootStrapLambdaRole.Arn
+      Runtime: python3.6
+      Timeout: 60
+      VpcConfig: 
+        SubnetIds:
+          - !Ref SubnetAPrivate
+          - !Ref SubnetBPrivate
+          - !Ref SubnetCPrivate
+        SecurityGroupIds: 
+          - !GetAtt 'AuroraServerlessSecurityGroup.GroupId'
+      Environment:
+        Variables: 
+          DB_HOST: !GetAtt 'AuroraDBCluster.Endpoint.Address'
+          USER_NAME: !Ref DBUsername
+          SECRET_ARN: !Ref AuroraMasterSecret
+          REGION_NAME: !Ref "AWS::Region"
+            
+  DBBootStrapLambdaFnTrigger:
+    Type: Custom::LambdaAPGBootStrap
+    DependsOn:
+      - AuroraDBCluster
+      - SecretsManagerVPCEndpoint
+      - RouteTablePrivateANATRoute
+      - RouteTablePrivateBNATRoute
+      - RouteTablePrivateCNATRoute
+    Version: "1.0"
+    Properties:
+      ServiceToken: !GetAtt 'DBBootStrapLambdaFn.Arn'
+      
+  CityNameHandlerLambdaFn:
+    Type: AWS::Lambda::Function
+    DependsOn:
+      - CityVoteHandlerLambdaRole
+    Properties:
+      Code:
+        S3Bucket: 'awsrdsdataapidemo-us-east-1'
+        S3Key: 'cityvotehandlerlambda/cityvotehandler.zip'
+      Description: >-
+          City Vote Handler Lambda function for MySQL Serverless Cluster Data API Live Demo
+      Handler: CityVoteHandler::handleRequest
+      MemorySize: 512
+      Role: !GetAtt CityVoteHandlerLambdaRole.Arn
+      Runtime: java8
+      Timeout: 60
+      Environment:
+        Variables: 
+          AURORA_ARN: !Join [':', ['arn:aws:rds', !Ref 'AWS::Region', !Ref 'AWS::AccountId', 'cluster', !Ref AuroraDBCluster]]
+          SECRET_ARN: !Ref AuroraMasterSecret
+          DATA_API_ENDPOINT: !Sub 'https://rds-data.${AWS::Region}.amazonaws.com'
+          REGION_NAME: !Ref "AWS::Region"
+          PINPOINT_PROJECT_ID: !Ref AmazonPinpointProjectID
+          LONG_CODE: !Ref AmazonPinpointLongCode
+
+  SNSSubscriptionForLambda:
+    Type: "AWS::SNS::Subscription"
+    Properties:
+      Endpoint: !GetAtt 'CityNameHandlerLambdaFn.Arn'
+      Protocol: lambda
+      TopicArn: !Ref AmazonPinPointSNSArn
+  
+  LambdaInvokePermission: 
+    Type: AWS::Lambda::Permission
+    Properties: 
+      Action: lambda:InvokeFunction
+      Principal: sns.amazonaws.com
+      SourceArn:  !Ref AmazonPinPointSNSArn   
+      FunctionName: !Ref CityNameHandlerLambdaFn
+      
+###############################################################################
+# Outputs 
+###############################################################################   
+Outputs:
+  ClusterEndpoint:
+    Description: 'Aurora Cluster/Writer Endpoint'
+    Value: !GetAtt 'AuroraDBCluster.Endpoint.Address'
+  DBUsername:
+    Description: 'Database master username'
+    Value: !Ref DBUsername
+  MySQLCommandLine:    
+    Description: MySQL Command Line
+    Value: !Join
+             - ''
+             - - 'mysql -h '
+               - !GetAtt 'AuroraDBCluster.Endpoint.Address' 
+               - ' -P '
+               - !GetAtt 'AuroraDBCluster.Endpoint.Port'
+               - ' -u '
+               - !Ref DBUsername
+               - ' -p'
