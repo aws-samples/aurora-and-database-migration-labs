@@ -97,19 +97,7 @@ Resources:
     Type: AWS::EC2::EIP
     Properties:
       Domain: vpc  
-
-  NATEIPB:
-    DependsOn: VPCGatewayAttachment
-    Type: AWS::EC2::EIP
-    Properties:
-      Domain: vpc  
  
-  NATEIPC:
-    DependsOn: VPCGatewayAttachment
-    Type: AWS::EC2::EIP
-    Properties:
-      Domain: vpc  
-
   SubnetAPublic:
     Type: 'AWS::EC2::Subnet'
     Properties:
@@ -486,9 +474,14 @@ Resources:
     DependsOn:
       - AuroraDBCluster
       - SecretsManagerVPCEndpoint
+      - RouteTablePublicInternetRoute
       - RouteTablePrivateANATRoute
       - RouteTablePrivateBNATRoute
       - RouteTablePrivateCNATRoute
+      - RouteTableAssociationAPublic
+      - RouteTableAssociationAPrivate
+      - RouteTableAssociationBPrivate
+      - RouteTableAssociationCPrivate
     Version: "1.0"
     Properties:
       ServiceToken: !GetAtt 'DBBootStrapLambdaFn.Arn'
