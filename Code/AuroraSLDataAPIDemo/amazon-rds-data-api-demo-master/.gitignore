@@ -1,0 +1,12 @@
+.gradle
+.idea
+/build/
+out/
+.settings
+.project
+gradle
+*.iml
+*.jar
+*.war
+*.ear
+

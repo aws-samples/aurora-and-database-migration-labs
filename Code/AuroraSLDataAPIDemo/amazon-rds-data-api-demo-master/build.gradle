@@ -1,0 +1,30 @@
+group 'AWSRDSDataAPIDemo'
+version '1.0'
+
+apply plugin: 'java'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compile (
+            'com.amazonaws:aws-lambda-java-core:1.1.0',
+            'com.amazonaws:aws-lambda-java-events:1.1.0',
+            'com.amazonaws:aws-java-sdk-pinpoint:1.11.453',
+            'com.amazonaws:aws-java-sdk-rdsdata:1.11.454',
+            'org.apache.commons:commons-lang3:3.0'
+    )
+}
+
+task buildZip(type: Zip) {
+    from compileJava
+    from processResources
+    into('lib') {
+        from configurations.compileClasspath
+    }
+}
+
+build.dependsOn buildZip
