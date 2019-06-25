@@ -43,11 +43,12 @@ with open(os.path.join(os.path.dirname(__file__),'config_pg_perf_stat_snapper.js
 
 def getoptions():
     parser = argparse.ArgumentParser(
-        description='Snap PostgreSQL performance statistics and exit')
+        description='Snap PostgreSQL performance statistics and exit',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     parser.add_argument("-e",
                         "--endpoint",
-                        help="Database Endpoint",
+                        help="PostgreSQL Instance Endpoint",
                         required=True)
 
     parser.add_argument("-P",
@@ -58,7 +59,7 @@ def getoptions():
     parser.add_argument("-d",
                         "--dbname",
                         help="Database Name",
-                        required=True)                      
+                        default='postgres')                      
                         
     parser.add_argument("-u",
                         "--user",
@@ -67,12 +68,12 @@ def getoptions():
                         
     parser.add_argument("-s",
                         "--SecretARN",
-                        help="AWS Secrets Manager Secret ARN",
+                        help="AWS Secrets Manager stored Secret ARN",
                         required=True)
                         
     parser.add_argument("-o",
                         "--stagingdir",
-                        help="Directory containing the performance stats csv files",
+                        help="Directory containing the snapper generated csv files",
                         required=True)                      
                         
     parser.add_argument("-r",
@@ -157,7 +158,7 @@ if __name__ == "__main__":
         logger.info('Setting up of Database for importing pgawr table(s) ...')
         runcmd("PGPASSWORD='" + DBPASS + "'" + " /usr/local/pgsql/bin/psql --host=" + DBHOST + " --port=" + DBPORT + " --username=" + DBUSER + " --dbname=" + DBNAME + " --command='" + "CREATE DATABASE " +  ISV_DBNAME + ";'" + " --quiet" + " --echo-errors")
     
-        ddl_file_name = STAGING_DIR + "/" + "all_ddls.sql"
+        ddl_file_name = os.path.join(STAGING_DIR,'all_ddls.sql')
     
         logger.info('Creating pgawr related table(s) ...')
         runcmd("PGPASSWORD='" + DBPASS + "'" + " /usr/local/pgsql/bin/psql --host=" + DBHOST + " --port=" + DBPORT + " --username=" + DBUSER + " --dbname=" + ISV_DBNAME + " --file=" + ddl_file_name + " --quiet" + " --echo-errors")
