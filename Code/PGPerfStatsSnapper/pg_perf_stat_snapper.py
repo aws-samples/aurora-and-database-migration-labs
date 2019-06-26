@@ -7,7 +7,6 @@ import argparse
 import sys
 # import DB-API 2.0 compliant module for PygreSQL 
 from pgdb import connect
-import base64
 from botocore.exceptions import ClientError
 import json
 import os
