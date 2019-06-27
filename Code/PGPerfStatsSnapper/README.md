@@ -149,4 +149,4 @@ zip -r pg-snapper-output output
 aws s3 cp pg-snapper-output.zip s3://pg-snapper-output/
 aws s3 presign s3://pg-snapper-output/pg-snapper-output.zip --expires-in 604800
 ```
-3.Share the S3 URL for loading the output and do further analysis.
+3. Share the S3 URL for loading the output and do further analysis.
