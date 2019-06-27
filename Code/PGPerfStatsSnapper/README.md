@@ -9,7 +9,9 @@ The snapper script collects and stores the PostgreSQL database metrics in separa
 
 ## Prerequisites
 
-1. Add pg_stat_statements to [shared_preload_libraries](https://www.postgresql.org/docs/11/runtime-config-client.html) DB parameter and create required extensions by running the following in the PostgreSQL instance.
+1. Add pg_stat_statements to [shared_preload_libraries](https://www.postgresql.org/docs/11/runtime-config-client.html) DB parameter and create required extensions by running the following in the PostgreSQL instance. 
+
+   **Note:**  ```aurora_stat_utils``` extension is valid only for Aurora PostgreSQL.
 ```bash
 psql --host=<PostgreSQL Instance EndPoint> --port=<Port> --username=<Master UserName> --dbname=<Database Name where Application objects are stored>
 
@@ -83,7 +85,7 @@ export PATH
 pip install boto3
 pip install PyGreSQL
 ```
-6. Download the snapper Python script along with the config file from [github](https://github.com/aws-samples/aurora-and-database-migration-labs/tree/master/Code/PGPerfStatsSnapper) and stage it in a directory. We will be using /home/ec2-user/scripts as the staging directory in the below steps.
+6. Download the snapper Python script along with the config file from [github](https://github.com/aws-samples/aurora-and-database-migration-labs/tree/master/Code/PGPerfStatsSnapper) and stage it in a directory. We will be using ```/home/ec2-user/scripts``` as the staging directory in the below steps.
 ```bash
 mkdir -p /home/ec2-user/scripts
 cd /home/ec2-user/scripts
@@ -124,7 +126,7 @@ optional arguments:
 ```bash
 /home/ec2-user/scripts/pg_perf_stat_snapper.py -e <PostgreSQL Instance EndPoint> -P <Port> -d <Database Name where Application objects are stored> -u <Master UserName> -s <AWS Secretes Manager ARN> -m setup -r <AWS Region>
 ```
-8.Schedule the script in crontab to run every 1 minute. Here the <output directory> is optional and if not provided all the output will be stored under "output" subdirectory where the script is staged.
+8. Schedule the script in crontab to run every 1 minute. Here the <output directory> is optional and if not provided all the output will be stored under "output" subdirectory where the script is staged.
 ```bash
 */1 * * * * /home/ec2-user/scripts/pg_perf_stat_snapper.py -e <PostgreSQL Instance EndPoint> -P <Port> -d <Database Name where Application objects are stored> -u <Master UserName> -s <AWS Secretes Manager ARN> -m snap [-o <output directory>] -r <AWS Region>
 ```
@@ -140,10 +142,11 @@ optional arguments:
 ```bash
 /home/ec2-user/scripts/pg_perf_stat_snapper.py -e <PostgreSQL Instance EndPoint> -P <Port> -d <Database Name where Application objects are stored> -u <Master UserName> -s <AWS Secretes Manager ARN> -m package [-o <output directory>] -r <AWS Region>
 ```
-2. Zip the output directory, upload to the S3 bucket created in the prerequisite section. Create a pre-signed URL of the zip file and provide the link to AWS for further analysis. In the example below s3://pg-snapper-output/ is the bucket used for uploading the zip file.
+2. Zip the output directory, upload to the S3 bucket created in the prerequisite section and create a pre-signed URL of the zip file. In the example below ```s3://pg-snapper-output/``` is the bucket used for uploading the zip file.
 ```bash
 cd /home/ec2-user/scripts
 zip -r pg-snapper-output output
 aws s3 cp pg-snapper-output.zip s3://pg-snapper-output/
 aws s3 presign s3://pg-snapper-output/pg-snapper-output.zip --expires-in 604800
 ```
+3.Share the S3 URL for loading the output and do further analysis.
