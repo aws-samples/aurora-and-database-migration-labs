@@ -1,11 +1,10 @@
 # PostgreSQL Performance Stats Snapper
 
 While doing load testing on RDS/Aurora PostgreSQL for proof of concept (POC) or for testing the impact of any configuration or code change, its important to collect all the database performance related metrics periodically at a certain interval for post analysis.
-RDS Enhanced Monitoring and RDS Performance Insights collect a lot of database performance metrics and provide dashboards for viewing the historical data.
+RDS Enhanced Monitoring and RDS Performance Insights collect a lot of database performance metrics and provide dashboards for viewing the historical data. There are a lot of other database performance statistics and metrics, which can be collected to assist with deep dive analysis of performance problems post the load testing.
 
-There are a lot of other database performance statistics and metrics, which can be collected to assist with deep dive analysis of performance problems post the load testing.
-The snapper script provided here enable periodic collection (snapping) of PostgreSQL performance related statistics and metrics. The config file used by the scripts can be customized to add and remove database dictionary views and queries to be snapped as required.
-The snapper script collects and stores the PostgreSQL database metrics in separate OS files to have minimal impact on the database. These files can be loaded into a separate PostgreSQL instance by the loader script for post analysis.
+The snapper script provided here enables periodic collection (snapping) of PostgreSQL performance related statistics and metrics. The config file used by the script can be customized to add and remove database dictionary views and queries to be snapped as required.
+The snapper script collects and stores the PostgreSQL database metrics in separate OS level files to have minimal impact on the database. These files can be loaded into another PostgreSQL instance by the loader script for post analysis.
 
 ## Prerequisites
 
