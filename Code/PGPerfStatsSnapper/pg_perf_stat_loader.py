@@ -144,7 +144,6 @@ if __name__ == "__main__":
     try:
         DBPASS = get_secret(SECRET_ARN,REGION_NAME)
         logger.info('SUCCESS: Password retrieval for PostgreSQL instance succeeded')
-        HOSTPORT=DBHOST + ':' + str(DBPORT)
     
     except Exception as e:
         logger.error('Exception: ' + str(e))
@@ -168,10 +167,16 @@ if __name__ == "__main__":
         sys.exit()
     
     try:
-        # Use the following if SSL is forced on the PostgreSQL instance to connect using RDS root certificate
-        #my_connection = connect(database=ISV_DBNAME, host=HOSTPORT, user=DBUSER, password=DBPASS, sslmode='require', sslrootcert = 'rds-combined-ca-bundle.pem')
+        HOSTPORT=DBHOST + ':' + str(DBPORT)
         my_connection = connect(database=ISV_DBNAME, host=HOSTPORT, user=DBUSER, password=DBPASS, connect_timeout = 30)
+        logger.info('SUCCESS: Connection to PostgreSQL instance succeeded')
         
+    except Exception as e:
+        logger.error('Exception: ' + str(e))
+        logger.error("ERROR: Unexpected error: Couldn't connect to the PostgreSQL instance.")
+        sys.exit()
+    
+    try:
         load_obj_list=config['SNAP']
         load_query_list=config['PACKAGE']
         load_obj_list.extend(load_query_list)
@@ -183,20 +188,31 @@ if __name__ == "__main__":
                     if os.path.getsize(os.path.join(STAGING_DIR, filename)) > 0:
                         logger.info('  Loading file ' + filename + ' ...')
                      
-                        table_name=next(item for item in load_obj_list if item["filename"] == filename)["target"]
-                     
+                        if filename == 'pg_awr_snapshots.csv':
+                            table_name='pg_awr_snapshots_cust'
+                        else:
+                            try:
+                                table_name=next(item for item in load_obj_list if item["filename"] == filename)["target"]
+                            except Exception as e:
+                                 logger.error('  Target table name for: ' + filename + ' not found in config file')
+                                 continue
                         try:
                             with open(os.path.join(STAGING_DIR, filename), 'r') as f:
                                 cur.copy_from(f,table_name,'csv')
                                 f.close()
                         except Exception as e:
                             logger.error('  Error loading file: ' + filename)
+                            logger.error('   Exception: ' + str(e))
+                            logger.error('  Abandoning loading ...')
                             f.close()
-                            continue
+                            cur.close()
+                            my_connection.close()
+                            sys.exit()
                     else:
                          logger.info('  Skipping file ' + filename + ' since filesize is 0 ...')
                          
             logger.info('Loading of all pgawr related data completed successfully ...')
+            print('Loading of all pgawr related data completed successfully ...')
                 
         # Commit transaction and Close cursor, connection
         my_connection.commit()
@@ -205,4 +221,3 @@ if __name__ == "__main__":
 
     except Exception as e:
         logger.error('Exception: ' + str(e))
-        logger.error("ERROR: Unexpected error: Couldn't connect to the PostgreSQL instance.")

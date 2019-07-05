@@ -80,13 +80,6 @@
   ],
   "PACKAGE": [
 		{
-			"query": "select * from pgawr.pg_awr_snapshots",
-			"filename": "pg_awr_snapshots.csv",
-			"object": "pgawr.pg_awr_snapshots",
-			"target": "pg_awr_snapshots_cust",
-			"add_snap_id": 0
-		},
-		{
 			"query": "select * from pg_class",
 			"filename": "pg_class.csv",
 			"object": "pg_class",

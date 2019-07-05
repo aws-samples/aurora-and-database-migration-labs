@@ -73,7 +73,7 @@ def getoptions():
     
     parser.add_argument("-m",
                         "--mode",
-                        help="Mode in which the script will run: Specify either setup, snap or package",
+                        help="Mode in which the script will run: Specify either snap or package",
                         required=True)
                         
     parser.add_argument("-o",
@@ -151,8 +151,6 @@ if __name__ == "__main__":
     try:
         DBPASS = get_secret(SECRET_ARN,REGION_NAME)
         HOSTPORT=DBHOST + ':' + str(DBPORT)
-        # Use the following if SSL is forced on the PostgreSQL instance to connect using RDS root certificate
-        #my_connection = connect(database=DBNAME, host=HOSTPORT, user=DBUSER, password=DBPASS, sslmode='require', sslrootcert = 'rds-combined-ca-bundle.pem')
         my_connection = connect(database=DBNAME, host=HOSTPORT, user=DBUSER, password=DBPASS, connect_timeout = 30)
         logger.info('SUCCESS: Connection to PostgreSQL instance succeeded')
     
@@ -163,24 +161,25 @@ if __name__ == "__main__":
     
     try:
         with my_connection.cursor() as cur:
-            
-            if MODE =='setup':
-                logger.info('Starting Setup of pgawr schema and table(s) ...')
-                cur.execute("CREATE SCHEMA pgawr")
-                cur.execute("create table pgawr.pg_awr_snapshots (snap_id bigint,sample_start_time timestamp with time zone,sample_end_time timestamp with time zone)")
-                logger.info('Finished Setup of pgawr schema and table(s) ...')
-                print('Setup of pgawr schema and table(s) completed successfully')
                 
-            elif MODE == 'snap':
-            
+            if MODE == 'snap':
+                
+                snap_md_fname=os.path.join(OUTPUT_DIR,'pg_awr_snapshots.csv')
+                
                 # Generate Snap ID
-                cur.execute("select coalesce(max(snap_id),0)+1 from pgawr.pg_awr_snapshots")
-                snap_id=cur.fetchone()[0]
+                if os.path.exists(snap_md_fname):
+                    with open(snap_md_fname) as f:
+                        data = f.readlines()
+                        last_line = data[-1].split(',')
+                        snap_id= int(last_line[0])+1
+                else:
+                    snap_id = 1
                 
                 logger.info('Starting SNAP with snap_id=' + str(snap_id))
                 
-                # Store the current Snap ID and snapshot begin time
-                cur.execute("insert into pgawr.pg_awr_snapshots(snap_id,sample_start_time) values (%d,clock_timestamp())",(snap_id,))
+                # Get Snap Begin Time
+                cur.execute("select clock_timestamp()")
+                snap_begin_time=cur.fetchone()[0]
                 
                 # Get all the queries to be Snapped
                 snap_query_list=config['SNAP']
@@ -205,9 +204,17 @@ if __name__ == "__main__":
                         f.close()
                         cur.execute("rollback to savepoint sp")
                         continue
+                    
+                # Get Snap End Time
+                cur.execute("select clock_timestamp()")
+                snap_end_time=cur.fetchone()[0]
                 
-                # Store the snapshot end time
-                cur.execute("update pgawr.pg_awr_snapshots set sample_end_time=clock_timestamp() where snap_id=%d",(snap_id,))
+                # Store snapshot metda data in pg_awr_snapshots.csv
+                snap_md = str(snap_id) + ',' + str(snap_begin_time) + ',' + str(snap_end_time)
+                with open(snap_md_fname,'a+') as f:
+                    f.write(snap_md)
+                    f.write('\n')
+                
                 logger.info('Finished SNAP with snap_id=' + str(snap_id))
                 
             elif MODE == 'package':
@@ -293,9 +300,14 @@ if __name__ == "__main__":
                 
                 runcmd("PGPASSWORD='" + DBPASS + "'" + " /usr/local/pgsql/bin/psql --host=" + DBHOST + " --port=" + DBPORT + " --username=" + DBUSER + " --dbname=" + DBNAME + " --file=" + ddl_gen_file_name + " --quiet" + " --echo-errors")
                 
+                
+                # Append pg_awr_snapshots DDL to all_ddls.sql
+                with open(os.path.join(OUTPUT_DIR, 'all_ddls.sql'),'a+') as f:
+                    f.write("create table pg_awr_snapshots_cust (snap_id bigint,sample_start_time timestamp with time zone,sample_end_time timestamp with time zone);")
+                    f.write('\n')
+                
                 #Replace column datatype in the DDL SQL to support data import later using copy command
                 logger.info('  Doing inplace replace of some column datatypes in the generated DDL ...')
-                
                 
                 for line in fileinput.input(os.path.join(OUTPUT_DIR, 'all_ddls.sql'), inplace=True, backup='.bak'):
                     print(line.replace('regclass', 'text'), end='')
