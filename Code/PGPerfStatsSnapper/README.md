@@ -89,6 +89,7 @@ PATH=/usr/local/pgsql/bin:$PATH
 export PATH
 pip install boto3
 pip install PyGreSQL
+exit
 ```
 6. Download the snapper Python script along with the config file from [github](https://github.com/aws-samples/aurora-and-database-migration-labs/tree/master/Code/PGPerfStatsSnapper) and stage it in a directory. We will be using ```/home/ec2-user/scripts``` as the staging directory in the below steps.
 ```bash
