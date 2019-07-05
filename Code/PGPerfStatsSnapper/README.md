@@ -8,7 +8,8 @@ The snapper script collects and stores the PostgreSQL database metrics in separa
 
 ## Prerequisites
 
-1. Add pg_stat_statements to [shared_preload_libraries](https://www.postgresql.org/docs/11/runtime-config-client.html) DB parameter and create required extensions by running the following in the PostgreSQL instance. 
+1. Add **pg_stat_statements** to [shared_preload_libraries](https://www.postgresql.org/docs/11/runtime-config-client.html) DB parameter and create required extensions by running the following in the PostgreSQL instance. 
+ Set **track_activity_query_size** parameter to the max value 102400 to capture the full text of very long SQL statements.
 
    **Note:**  ```aurora_stat_utils``` extension is valid only for Aurora PostgreSQL.
 ```bash
@@ -50,11 +51,11 @@ postgres=> SELECT pg_stat_statements_reset();
 ## Setup
 
 1. [Launch an EC2 instance](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/launching-instance.html) where the snapper script will be scheduled.
-   1. Use "Amazon Linux AMI 2018.03.0 (HVM), SSD Volume Type" AMI.
+   1. Use *"Amazon Linux AMI 2018.03.0 (HVM), SSD Volume Type"* AMI.
    1. Use r4.8xlarge instance type.
    1. Use same VPC and subnet/AZ as the RDS/Aurora PostgreSQL Instance
-   1. Add the IAM role to the EC2 security group which was created in the prerequisite step.
-   1. Allocate 30 GB of Genera Purpose SSD (gp2) storage to the Root volume.
+   1. Add the IAM role to the EC2 instance which was created in the prerequisite step.
+   1. Allocate 30 GB of General Purpose SSD (gp2) storage to the Root volume.
    1. Add the EC2 instance to the same security group as the RDS/Aurora instance or add it to a new security group (and later add the new security group to inbound rule of the RDS/Aurora security group).
    1. Make sure to download and save the key pair.
 
@@ -64,16 +65,21 @@ postgres=> SELECT pg_stat_statements_reset();
 
 4. Install PostgreSQL client on the EC2 instance
 ```bash
+sudo yum -y update
+sudo yum -y group install "Development Tools"
+sudo yum -y install readline-devel
+sudo yum -y install openssl-devel
 mkdir ~/postgresql
 cd ~/postgresql
 curl https://ftp.postgresql.org/pub/source/v11.3/postgresql-11.3.tar.gz -o postgresql-11.3.tar.gz
 tar -xvf postgresql-11.3.tar.gz
 cd postgresql-11.3
-sudo ./configure
+sudo ./configure --with-openssl
 sudo make -C src/bin install
 sudo make -C src/include install
 sudo make -C src/interfaces install
 sudo make -C doc install
+sudo /sbin/ldconfig /usr/local/pgsql/lib
 ```
 
 5. Install Python dependencies
@@ -90,12 +96,13 @@ mkdir -p /home/ec2-user/scripts
 cd /home/ec2-user/scripts
 curl -L https://raw.githubusercontent.com/aws-samples/aurora-and-database-migration-labs/master/Code/PGPerfStatsSnapper/pg_perf_stat_snapper.py -o pg_perf_stat_snapper.py
 curl -L https://raw.githubusercontent.com/aws-samples/aurora-and-database-migration-labs/master/Code/PGPerfStatsSnapper/config_pg_perf_stat_snapper.json -o config_pg_perf_stat_snapper.json
+chmod 755 pg_perf_stat_snapper.py
 ```
 
 Script Usage:
 
 ```bash
-[ec2-user@ip-172-31-6-131 ~]$ /home/ec2-user/scripts/pg_perf_stat_snapper.py -h
+[ec2-user@ip-172-31-1-240 scripts]$ /home/ec2-user/scripts/pg_perf_stat_snapper.py -h
 usage: pg_perf_stat_snapper.py [-h] -e ENDPOINT -P PORT -d DBNAME -u USER -s
                                SECRETARN -m MODE [-o OUTPUTDIR] -r REGION
 
@@ -112,8 +119,8 @@ optional arguments:
   -u USER, --user USER  Database UserName (default: None)
   -s SECRETARN, --SecretARN SECRETARN
                         AWS Secrets Manager stored Secret ARN (default: None)
-  -m MODE, --mode MODE  Mode in which the script will run: Specify either
-                        setup, snap or package (default: None)
+  -m MODE, --mode MODE  Mode in which the script will run: Specify either snap
+                        or package (default: None)
   -o OUTPUTDIR, --outputdir OUTPUTDIR
                         Output Directory (default:
                         /home/ec2-user/scripts/output)
@@ -121,11 +128,7 @@ optional arguments:
                         AWS region (default: None)
 ```
 
-7. Setup Snapper related schema and tables by running the following:
-```bash
-/home/ec2-user/scripts/pg_perf_stat_snapper.py -e <PostgreSQL Instance EndPoint> -P <Port> -d <Database Name where Application objects are stored> -u <Master UserName> -s <AWS Secretes Manager ARN> -m setup -r <AWS Region>
-```
-8. Schedule the script in crontab to run every 1 minute. Here the <output directory> is optional and if not provided all the output will be stored under "output" subdirectory where the script is staged.
+7. Schedule the script in crontab to run every 1 minute. Here the <output directory> is optional and if not provided all the output will be stored under "output" subdirectory where the script is staged.
 ```bash
 */1 * * * * /home/ec2-user/scripts/pg_perf_stat_snapper.py -e <PostgreSQL Instance EndPoint> -P <Port> -d <Database Name where Application objects are stored> -u <Master UserName> -s <AWS Secretes Manager ARN> -m snap [-o <output directory>] -r <AWS Region>
 ```
