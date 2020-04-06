@@ -1,0 +1,129 @@
+SELECT OBJECT_TYPE, Count(*) FROM DBA_OBJECTS WHERE OWNER IN ('TAXI')
+GROUP BY owner,object_type;
+
+OBJECT_TYPE	COUNT(*)
+TRIGGER	3
+LOB		2
+TABLE	11
+SEQUENCE 5
+INDEX	17
+
+
+
+SELECT table_name,num_rows FROM dba_tables WHERE owner IN ('TAXI');
+TABLE_NAME		NUM_ROWS
+RIDERS			100000
+PAYMENT			60001
+CAB_TYPES		4
+CAR_MODEL		5
+PAYMENT_TYPES	7
+TRIP_STATUS		4
+RATE_CODES		7	
+DRIVERS			100001
+TRIPS			128714
+awsdms_validation_failures_v1	0
+BILLING			60001
+
+
+SQL> desc taxi.trips
+ Name                                      Null?    Type
+ ----------------------------------------- -------- ----------------------------
+ ID                                        NOT NULL NUMBER(10)
+ RIDER_ID                                           NUMBER(19)
+ DRIVER_ID                                          NUMBER
+ RIDER_NAME                                         VARCHAR2(100)
+ RIDER_MOBILE                                       VARCHAR2(100)
+ RIDER_EMAIL                                        VARCHAR2(100)
+ DRIVER_NAME                                        VARCHAR2(100)
+ DRIVER_EMAIL                                       VARCHAR2(100)
+ DRIVER_MOBILE                                      VARCHAR2(100)
+ VEHICLE_ID                                         VARCHAR2(50)
+ CAB_TYPE_ID                                        NUMBER
+ VENDOR_ID                                          NUMBER
+ PICKUP_DATETIME                                    TIMESTAMP(6)
+ DROPOFF_DATETIME                                   TIMESTAMP(6)
+ STORE_AND_FWD_FLAG                                 VARCHAR2(100)
+ RATE_CODE_ID                                       NUMBER
+ PICKUP_LONGITUDE                                   NUMBER
+ PICKUP_LATITUDE                                    NUMBER
+ DROPOFF_LONGITUDE                                  NUMBER
+ DROPOFF_LATITUDE                                   NUMBER
+ PASSENGER_COUNT                                    NUMBER
+ TRIP_DISTANCE                                      NUMBER
+ FARE_AMOUNT                                        NUMBER
+ EXTRA                                              NUMBER
+ MTA_TAX                                            NUMBER
+ TIP_AMOUNT                                         NUMBER
+ TOLLS_AMOUNT                                       NUMBER
+ EHAIL_FEE                                          NUMBER
+ IMPROVEMENT_SURCHARGE                              NUMBER
+ TOTAL_AMOUNT                                       NUMBER
+ PAYMENT_TYPET                                      NUMBER
+ TRIP_TYPE                                          NUMBER
+ PICKUP_LOCATION_ID                                 NUMBER
+ DROPOFF_LOCATION_ID                                NUMBER
+ STATUS                                             VARCHAR2(100)
+
+
+
+
+SQL> desc taxi.billing;
+ Name                                      Null?    Type
+ ----------------------------------------- -------- ----------------------------
+ ID                                        NOT NULL NUMBER(10)
+ DRIVER_ID                                          NUMBER(10)
+ BILLING_CYCLE                                      NUMBER(6)
+ BILLING_START                                      TIMESTAMP(6)
+ BILLING_END                                        TIMESTAMP(6)
+ BILLING_DATE                                       TIMESTAMP(6)
+ BILLING_AMOUNT                                     NUMBER
+ COMMISSIONS                                        NUMBER
+ DESCRIPTION                                        VARCHAR2(500)
+ RIDES_TOTAL                                        NUMBER(6)
+ BILLING_STATUS                                     VARCHAR2(100)
+
+SQL> desc taxi.payment;
+ Name                                      Null?    Type
+ ----------------------------------------- -------- ----------------------------
+ ID                                        NOT NULL NUMBER(10)
+ BILLING_ID                                         NUMBER(10)
+ DRIVER_ID                                          NUMBER(10)
+ BILLING_CYCLE                                      NUMBER(6)
+ PAYMENT_AMOUNT                                     NUMBER
+ PAYMENT_DATE                                       TIMESTAMP(6)
+ PAYMENT_ID                                         NUMBER(6)
+ PAYMENT_STATUS                                     VARCHAR2(100)
+ DESCRIPTION                                        VARCHAR2(500)
+
+
+
+
+SQL> desc taxi.riders;
+ Name                                      Null?    Type
+ ----------------------------------------- -------- ----------------------------
+ RIDER_ID                                  NOT NULL NUMBER(10)
+ RIDER_NAME                                NOT NULL VARCHAR2(100)
+ RIDER_EMAIL                               NOT NULL VARCHAR2(100)
+ CREATED_ON                                NOT NULL TIMESTAMP(6)
+ PAYMENT_ID                                NOT NULL NUMBER(19)
+ RIDER_MOBILE                              NOT NULL VARCHAR2(100)
+ ADDRESS                                            VARCHAR2(1000)
+ RATING                                             VARCHAR2(10)
+ PROFILE                                            VARCHAR2(1000)
+
+SQL> desc taxi.drivers;
+ Name                                      Null?    Type
+ ----------------------------------------- -------- ----------------------------
+ DRIVER_ID                                 NOT NULL NUMBER(10)
+ DRIVER_NAME                               NOT NULL VARCHAR2(100)
+ VEHICLE_ID                                NOT NULL VARCHAR2(50)
+ MAKE                                               NUMBER(19)
+ DRIVER_EMAIL                              NOT NULL VARCHAR2(100)
+ CREATED_ON                                NOT NULL TIMESTAMP(6)
+ DRIVER_MOBILE                             NOT NULL VARCHAR2(100)
+ PAYMENT_ID                                NOT NULL NUMBER(10)
+ ADDRESS                                            VARCHAR2(1000)
+ RATING                                             VARCHAR2(10)
+ PROFILE                                            VARCHAR2(1000)
+
+

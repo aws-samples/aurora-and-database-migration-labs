@@ -1,0 +1,92 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Description: Sam application to deploy lambda.
+Parameters: 
+    FunctionNameParameter:
+        Type: String
+        Default: aws-db-workshop-ddb-stream-processor
+        Description: Name of the Lambda function. Default is aws-db-workshop-ddb-stream-processor
+    LambdaLayerNameParameter:
+        Type: String
+        Description: Name of the Lambda Layer.
+    DatabaseName:
+        Type: String
+        Description: Name of the Amazon Aurora database containing the trips table
+    DatabaseHostName:
+        Type: String
+        Description: Name of the host of the Amazon Aurora database containing the trips table
+    DatabasePort:
+        Type: Number
+        Default: 5432
+        Description: Port number of the Amazon Aurora database containing the trips table. Default is 5432
+    DatabaseUserName:
+        Type: String
+        Description: User name of the Amazon Aurora database containing the trips table
+    DatabasePassword:
+        Type: String
+        Description: Password of the Amazon Aurora database containing the trips table
+    DDBTableName:
+        Type: String
+        Description: Name of the Amazon Dynamodb table. Default name is 'aws-db-workshop-trips'
+        Default: aws-db-workshop-trips
+    DDBStreamName:
+        Type: String
+        Description: Name of the Amazon Dynamodb stream
+    SecurityGroupIds: 
+        Type: List<AWS::EC2::SecurityGroup::Id>
+        Description: Security Group IDs that Lambda will use
+    VpcSubnetIds: 
+        Type: List<AWS::EC2::Subnet::Id>
+        Description: VPC Subnet IDs that Lambda will use (min 2 for HA)
+Resources:
+    PGConnectionLayer:
+        Type: AWS::Serverless::LayerVersion
+        Properties:
+            LayerName: !Ref LambdaLayerNameParameter
+            Description: Python Postgres Connection Library
+            ContentUri: dependencies/pg8000-layer.zip
+            CompatibleRuntimes: 
+                - python3.7
+            LicenseInfo: 'BSD'
+            RetentionPolicy: Delete
+    TripsDDBStreamProcessorFunction:
+        Type: 'AWS::Serverless::Function'
+        Properties:
+            FunctionName: !Ref FunctionNameParameter
+            Handler: lambda_function.lambda_handler
+            Runtime: python3.7
+            CodeUri: .
+            Description: Process completed taxi trip informaiton from Amazon DynamoDB Streams and publishes the informaiton to the trips table in Amazon Aurora database
+            MemorySize: 3008
+            Timeout: 900
+            Layers:
+                - !Ref PGConnectionLayer
+            Events:
+                Stream:
+                    Type: DynamoDB
+                    Properties: 
+                        Stream: 
+                            !Sub
+                                - 'arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/${streamName}'
+                                - {tableName: !Ref DDBTableName, streamName: !Ref DDBStreamName }
+                        StartingPosition: LATEST
+                        BatchSize: 10
+                        Enabled: True
+            VpcConfig:
+                SecurityGroupIds: !Ref SecurityGroupIds
+                SubnetIds : !Ref VpcSubnetIds
+            Policies:
+                - VPCAccessPolicy: {}
+                - DynamoDBStreamReadPolicy: 
+                    TableName: !Ref DDBTableName
+                    StreamName: !Ref DDBStreamName
+            Environment:
+                Variables:
+                    PG_DATABASE: !Ref DatabaseName
+                    PG_HOST: !Ref DatabaseHostName
+                    PG_PORT: !Ref DatabasePort
+                    PG_USER: !Ref DatabaseUserName
+                    PG_PASSWORD : !Ref DatabasePassword
+            Tags:
+                Name: !Ref FunctionNameParameter
+                Purpose: 'aws-db-workshop'
