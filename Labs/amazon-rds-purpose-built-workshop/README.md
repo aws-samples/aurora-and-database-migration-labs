@@ -23,7 +23,7 @@ We will leverage the following AWS services as part of this workshop.
 - [AWS DMS](https://aws.amazon.com/dms/) for migrating database from source to target
 - [AWS Lambda](https://aws.amazon.com/lambda/) for event driven data processing
 - [AWS Cloud9](https://aws.amazon.com/cloud9) IDE  for running scripts and deploying code
-- [IAM Roles] (https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html) for permissions required by AWS DMS
+- [IAM Roles](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html) for permissions required by AWS DMS
 
 :warning: **You will be billed for the AWS resource usage if you running this lab on your own AWS Account. Make sure to delete the CloudFormation stacks and AWS resources created by this Lab after you are done to avoid incurring additional charges.** 
  
