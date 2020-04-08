@@ -103,8 +103,8 @@ All Athena queries originating from the Workgroup _AmazonAthenaPreviewFunctional
 3. Select **Workgroup:primary** tab and then click **Create workgroup** as shown below.
 4. Provide the following values.  Leave the rest to default.
 
-  1. Specify the Workgroup name as **AmazonAthenaPreviewFunctionality**.
-  2. Specify the S3 bucket name with a  **s3://**  prefix and  **/**  suffix that was created as part of the CloudFormation Stack (Look for S3bucketName in the Outputs section).  For e.g. _s3://mod-aa8afde9acf04c7f-dbworkshops3bucket-12vvoqlrar5b3/_
+   1. Specify the Workgroup name as **AmazonAthenaPreviewFunctionality**.
+   2. Specify the S3 bucket name with a  **s3://**  prefix and  **/**  suffix that was created as part of the CloudFormation Stack (Look for S3bucketName in the Outputs section).  For e.g. _s3://mod-aa8afde9acf04c7f-dbworkshops3bucket-12vvoqlrar5b3/_
  
 5. Click create workgroup.
 
@@ -137,15 +137,15 @@ This connector enables Amazon Athena to communicate with DynamoDB, making your t
 
  ![ddb.png](./assets/ddb.png)
 
-8.  You will be be taken to AWS Lambda home page where the connector will be deployed as a SAM Application. Provide values for the following parameters and leave the rest of the values to the default.
+8. You will be be taken to AWS Lambda home page where the connector will be deployed as a SAM Application. Provide values for the following parameters and leave the rest of the values to the default.
 
- **SpillBucket**: Specify the S3 bucket name that was created as part of the CloudFormation Stack for e.g. mod-aa8afde9acf04c7f-dbworkshops3bucket-1511cfk17lzed
-
- **AthenaCatalogName**: taxiddb
+   **SpillBucket**: Specify the S3 bucket name that was created as part of the CloudFormation Stack for e.g. mod-aa8afde9acf04c7f-dbworkshops3bucket-1511cfk17lzed
+   
+   **AthenaCatalogName**: taxiddb
+   
+   Select the option **_I acknowledge that this app creates custom IAM Roles_** and Click **Deploy**.
 
  ![ddbconn.png](./assets/ddbconn.png)
-
- Select the option **_I acknowledge that this app creates custom IAM Roles_** and Click **Deploy**.
         
 >**Note:** It will take a few minutes to deploy. After successful deployment, you can see the Lambda function deployed in your account as shown below.
 
@@ -183,23 +183,23 @@ This connector enables Amazon Athena to access your SQL database or RDS/Aurora i
 
 8. You will be taken to AWS Lambda home page where the connector will be deployed as a SAM Application. Provide values for the following parameters and leave the rest of the values to the default.
 
- **SecretNamePrefix**  : dbadmin
+   **SecretNamePrefix**  : dbadmin
 
- **SpillBucket**: Specify the S3 bucket name that was created as part of the CloudFormation Stack for e.g. mod-aa8afde9acf04c7f-dbworkshops3bucket-1511cfk17lzed
+   **SpillBucket**: Specify the S3 bucket name that was created as part of the CloudFormation Stack for e.g. mod-aa8afde9acf04c7f-dbworkshops3bucket-1511cfk17lzed
 
- **DefaultConnectionString** : postgres://<AuroraJDBCConnectionString from the output of parent CloudFormation stack>?user=auradmin&password=auradmin123 for e.g. postgres://jdbc:postgresql://akolab-auroracluster-qlkwnb51f0ir.cluster-ckxdapvbefiz.us-east-1.rds.amazonaws.com:5432/taxidb?user=auradmin&password=auradmin123
+   **DefaultConnectionString** : postgres://<AuroraJDBCConnectionString from the output of parent CloudFormation stack>?user=auradmin&password=auradmin123 for e.g. postgres://jdbc:postgresql://akolab-auroracluster-qlkwnb51f0ir.cluster-ckxdapvbefiz.us-east-1.rds.amazonaws.com:5432/taxidb?user=auradmin&password=auradmin123
 
- **LambdaFunctionName** : taxirdb
+   **LambdaFunctionName** : taxirdb
 
- **SecurityGroupIds** : specify the LambdaSecurityGroupId from the outputs of CloudFormation stack
+   **SecurityGroupIds** : specify the LambdaSecurityGroupId from the outputs of CloudFormation stack
 
- **SubnetIds** : specify the LambdaSubnet1,LambdaSubnet2 (separated by commas) from the output of CloudFormation stack
+   **SubnetIds** : specify the LambdaSubnet1,LambdaSubnet2 (separated by commas) from the output of CloudFormation stack
+   
+   Select the option **_I acknowledge that this app creates custom IAM Roles_** and Click **Deploy**.
 
 >**Note:** The JDBC connector can connect to database using credentials stored in AWS Secrets manager or directly by specifying userid and password. For this lab, we will specify the userid and password directly in the connection string. We have provided a dummy value "dbadmin" as a secretname prefix as this parameter seems to be a mandatory requirement.
 
  ![sam.png](./assets/sam.png)
-
- Select the option **_I acknowledge that this app creates custom IAM Roles_** and Click **Deploy**.
 
 >**Note:** It will take a few minutes to deploy. After successful deployment, you can see the Lambda function deployed in your account as shown below.
 
