@@ -1,5 +1,22 @@
-# LAB3: Leverage Athena federated query feature (in preview) to query Amazon DynamoDB, Aurora PostgreSQL and AWS S3
+# Lab 3: Leverage Athena federated query feature (in preview) to query Amazon DynamoDB, Aurora PostgreSQL and AWS S3
 
+  * [Overview](#overview)
+  * [Prerequisites](#prerequisites)
+  * [Preparing the Environment](#preparing-the-environment)
+    + [Setup environment variables on Cloud9 terminal window](#setup-environment-variables-on-cloud9-terminal-window)
+    + [Create a copy of trips table for federated query](#create-a-copy-of-trips-table-for-federated-query)
+    + [Create a AmazonAthenaPreviewFunctionality workgroup.](#create-a-amazonathenapreviewfunctionality-workgroup)
+    + [Switch to the AmazonAthenaPreviewFunctionality workgroup](#switch-to-the-amazonathenapreviewfunctionality-workgroup)
+  * [Setup Athena Connectors and Catalogs](#setup-athena-connectors-and-catalogs)
+    + [Setting up Amazon DynamoDB Connector](#setting-up-amazon-dynamodb-connector)
+    + [Setting up catalog for querying DynamoDB](#setting-up-catalog-for-querying-dynamodb)
+    + [Setting up JDBC connector for Aurora PostgreSQL database](#setting-up-jdbc-connector-for-aurora-postgresql-database)
+    + [Setting up catalog for querying Aurora PostgreSQL database](#setting-up-catalog-for-querying-aurora-postgresql-database)
+  * [Query multiple data sources using Athena Federated Query](#query-multiple-data-sources-using-athena-federated-query)
+    + [Use Case 1:  Querying data from Amazon DynamoDB and Amazon Aurora](#use-case-1---querying-data-from-amazon-dynamodb-and-amazon-aurora)
+    + [Use Case 2:  Querying data from Amazon DynamoDB and Amazon S3](#use-case-2---querying-data-from-amazon-dynamodb-and-amazon-s3)
+    + [Use Case 3:  Querying data from Amazon DynamoDB and partitioned data in Amazon S3](#use-case-3---querying-data-from-amazon-dynamodb-and-partitioned-data-in-amazon-s3)
+	
 ## Overview
 
 **Federated query** (in preview) is a new Amazon Athena feature that enables data analysts, engineers, and data scientists to execute SQL queries across data stored in relational, non-relational, object, and custom data sources.  In this lab, we have used purpose built databases to store trip data in Amazon DynamoDB and billing/payment related data in Amazon Aurora PostgreSQL. Running analytics on data spread across various data stores can be complex and time consuming. Typically, to analyze such data across data stores, you need to learn new programming languages, data access constructs, and build complex pipelines to extract, transform and load into a data warehouse before you can easily query the data. Data pipelines introduce delays and require custom processes to validate data accuracy and consistency across systems.  Federated queries in Athena eliminate this complexity by allowing customers to query data in-place wherever it resides. Analysts can use familiar SQL constructs to JOIN data across multiple data sources for quick analysis or use scheduled SQL queries to extract and store results in Amazon S3 for subsequent analysis.
@@ -393,4 +410,4 @@ and ddbcurrent.year=2016;
  ```
  
 
- **Congrats!!** You have successfully completed the Lab3.
+ **Congrats!!** You have successfully completed Lab 3. This concludes the workshop Labs.

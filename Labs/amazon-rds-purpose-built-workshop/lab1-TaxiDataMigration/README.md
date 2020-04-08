@@ -16,14 +16,14 @@
 ## Overview
 
 [AWS DMS](https://aws.amazon.com/dms/) (Database Migration Service) helps you migrate databases to AWS quickly and securely.
-In this lab, you will be performing a migration of sample taxi data schema from RDS Oracle to Amazon DynamoDB and Amazon Aurora PostgreSQL databases. For the purpose of this illustration, we have created a typical relational schema with foreign key dependencies between tables. We have used sample trip data (green taxi-Jan 2016) from [AWS Open dataset registry](https://registry.opendata.aws/nyc-tlc-trip-records-pds/) to populate trips table.
+In this lab, you will be performing a migration of sample taxi application data from RDS Oracle to Amazon DynamoDB and Amazon Aurora PostgreSQL databases. For this lab, we have created a typical relational schema with foreign key dependencies between tables. We have used sample trip data (green taxi-Jan 2016) from [AWS Open dataset registry](https://registry.opendata.aws/nyc-tlc-trip-records-pds/) to populate trips table.
 
 
 ## High Level Architecture 
 
 As part of this lab, we will migrate the **Trips** table  which is used by trips booking and management application to DynamoDB.  The application will store the data as a key-value schema and leverage the automatic scaling, flexible schema, serverless characteristics of DynamoDB for better scalability, availability and performance. 
 
-In DynamoDB you work with tables, items, and attributes that are the core components. A table is a collection of items and each item is a collection of attributes. DynamoDB uses primary keys called partition keys to uniquely identify each item in a [table](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.CoreComponents.html). You can also use [secondary indexes](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/SecondaryIndexes.html) to provide more querying flexibility. For this lab, we have created a DynamoDB table namely [aws-db-workshop-trips](./assets/ddb.png) with a partition_key:riderid and sort_key (tripinfo) which uniquely identifies the trip data. We will also create a secondary index on driverid so that your application can query the table using both riderid as well as driverid.
+In DynamoDB you work with tables, items, and attributes that are the core components. A table is a collection of items and each item is a collection of attributes. DynamoDB uses primary keys called partition keys to uniquely identify each item in a [table](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.CoreComponents.html). You can also use [secondary indexes](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/SecondaryIndexes.html) to provide more querying flexibility. For this lab, we have created a DynamoDB table namely [aws-db-workshop-trips](./assets/ddb.png) with a partition\_key (_riderid_) and sort\_key (_tripinfo_) which uniquely identifies the trip data. We will also create a secondary index on _driverid_ so that the application can query the table using both _riderid_ as well as _driverid_.
 
 
 For billing and payment use cases, we will migrate the **Billing**, **Riders**, **Drivers** and **Payment** tables to Aurora PostgreSQL. Amazon Aurora combines the performance and availability of traditional enterprise databases with the simplicity and cost-effectiveness of open source databases. The billing and payment application will leverage the ACID, transactional and analytics capabilities of [PostgreSQL](https://aws.amazon.com/rds/aurora/postgresql-features/). Using Aurora, we can scale the read traffic by adding additional replicas as needed. The figure below depicts the high level deployment architecture.  
@@ -33,7 +33,7 @@ For billing and payment use cases, we will migrate the **Billing**, **Riders**, 
 
 ## Preparing the Environment
 
-1.  Check if the CloudFormation Stack has successfully created the AWS resources. Go to [CloudFormation](https://us-east-1.console.aws.amazon.com/cloudformation/home?region=us-east-1#). You will see two Stacks created as shown below.  Click on the **Stack** that is created with the name **mod-**. This is a parent stack. The Stack with the name **aws-cloud9-xx** is a child stack and is used for launching Cloud9 environment. Click the parent stack and look at the **Outputs** section. We suggest to copy paste all the output values in a notepad. These details will be used in the subsequent steps as well as in Lab 2.
+1.  Check if the CloudFormation Stack has successfully created the AWS resources. Go to [CloudFormation](https://us-east-1.console.aws.amazon.com/cloudformation/home?region=us-east-1#). You will see two Stacks created as shown below.  Click on the **Stack** that is created with the name **mod-**. This is a parent stack. The Stack with the name **aws-cloud9-xx** is a child stack and is used for launching Cloud9 environment. Click the parent stack and look at the **Outputs** section. We suggest to copy paste all the output values in a notepad. These details will be used in the subsequent steps as well as in Lab 2 and Lab 3.
 
 ![](./assets/cfn-lab1.png)
 
@@ -41,13 +41,13 @@ For billing and payment use cases, we will migrate the **Billing**, **Riders**, 
 
 
 
-2. **Optional Step** Test the connectivity to RDS Oracle from your laptop using SQL Client. You may want to explore the source Oracle schema by running some sample queries using SQL Client of your choice. Alternatively, you can also explore the source relational schema [data model](./assets/taxi-data-model.png) and [sample output](./assets/oracle-taxi-schema.txt). Sample query output from source (Oracle) schema are given below for your reference.
+2. **Optional Step** Test the connectivity to RDS Oracle from your laptop using SQL client. You may want to explore the source Oracle schema by running some sample queries using SQL client of your choice. Alternatively, you can also explore the source relational schema [data model](./assets/taxi-data-model.png) and [sample output](./assets/oracle-taxi-schema.txt). Sample query output from source Oracle database schema are given below for your reference.
 
 Use the following information to connect to the RDS Oracle database.
 
 |Parameter|Description|
 |-------------|--------------|
-|Server name | Enter the Oracle RDS DNS|
+|Server name | Enter the Oracle RDS DNS value shown in parent CloudFormation stack output|
 |Port | 1521|
 |Username | dbadmin|
 |Password| oraadmin123|
@@ -73,26 +73,26 @@ OWNER OBJECT_TYPE  COUNT(*)
 
     ![](./assets/cloud9-1.png)
 
-5. Open a terminal window in the AWS Cloud9 IDE by clicking on __Window__ from the menu bar on the top and select __New Terminal__. On the Cloud9 terminal, run the below command to clone the github repository.
+5. Open a terminal window in the AWS Cloud9 IDE by clicking on __Window__ from the menu bar on the top and select __New Terminal__. In the Cloud9 terminal, run the below command to clone the github repository.
 
  ```shell script
  cd ~/environment
  git clone https://github.com/aws-samples/amazon-rds-purpose-built-workshop.git
  ```
 
-6. Install postgresql client and related libraries in the Cloud9 environment. This is required to use the postgresql command line utility psql.
+6. Install PostgreSQL client and related libraries in the Cloud9 environment. This is required to use the PostgreSQL command line utility psql.
 
 ```shell script
 sudo yum install -y postgresql96 postgresql96-contrib postgresql96-devel 
 ```
 
-7. Connect to target Aurora PostgreSQL using psql command as shown below on the Cloud9 terminal. For more options and commands, refer to [psql](https://www.postgresql.org/docs/9.6/app-psql.html) documentation.
+7. Connect to target Aurora PostgreSQL using psql command as shown below in the Cloud9 terminal. For more options and commands, refer to [psql](https://www.postgresql.org/docs/9.6/app-psql.html) documentation.
 
 Use the following information to connect to the Aurora PostgreSQL database.
 
 |Parameter| Description|
 |------|-------------
-|Host Name | Enter the AuroraClusterEndpointName|
+|Host Name | Enter the AuroraClusterEndpointName value shown in parent CloudFormation stack output|
 |Port | 5432|
 |Username | auradmin|
 |Password| auradmin123|
@@ -105,7 +105,7 @@ psql -h <Host Name> -U <Username> -d <Database Name> -p <Port>
 e.g. psql -h xxxxx.us-east-1.rds.amazonaws.com -U auradmin -d taxidb -p 5432
 
 ```shell script
-\l #list the databases in postgresql cluster 
+\l #list the databases in PostgreSQL cluster 
 ```  
 
 ```shell script
@@ -122,11 +122,11 @@ e.g. psql -h xxxxx.us-east-1.rds.amazonaws.com -U auradmin -d taxidb -p 5432
 
 > Note: As you have figured out, there are no tables created in Aurora PostgreSQL yet.
   
-8. Please note that before we migrate data from Oracle RDS to Aurora PostgreSQL, we need to setup a target schema. We recommend to leverage [AWS SCT](https://docs.aws.amazon.com/SchemaConversionTool/latest/userguide/CHAP_Welcome.html) to migrate schema from Oracle to PostgreSQL. However, for this workshop, we have provided a converted schema to use in the target Aurora environment.  Please execute the following command on the Cloud9 terminal to create the schema.
+8. Please note that before we migrate data from Oracle RDS to Aurora PostgreSQL, we need to setup a target schema. We recommend to leverage [AWS SCT](https://docs.aws.amazon.com/SchemaConversionTool/latest/userguide/CHAP_Welcome.html) to migrate schema from Oracle to PostgreSQL. However, for this workshop, we have provided a converted schema to use in the target Aurora PostgreSQL environment.  Please execute the following command in the Cloud9 terminal to create the schema.
  
 ```shell script
     cd ~/environment/amazon-rds-purpose-built-workshop/
-    psql -h <Aurora cluster endpoint> -U username -d taxidb -p 5432 -f ./src/create_taxi_schema.sql
+    psql -h <AuroraClusterEndpointName> -U auradmin -d taxidb -p 5432 -f ./src/create_taxi_schema.sql
 ```
    
 You can verify if the tables are created by running the below command after logging via psql.
@@ -142,7 +142,7 @@ You can verify if the tables are created by running the below command after logg
 
 ## Creating Endpoints for Source and Target databases
 
-Before we perform data migration, we need to create endpoints for both source and target databases for verifying the connectivity. This will be required for creating a migration task later in the workshop. 
+Before we perform data migration using AWS DMS, we need to create endpoints for both source and target databases. This will be required for creating a migration task later in the workshop. 
 
 Open the [AWS DMS console](https://us-east-1.console.aws.amazon.com/dms/home?region=us-east-1), and choose **Endpoints** in the navigation pane. 
 
@@ -158,7 +158,7 @@ Click **Create endpoint**. Enter the values as follows:
 |Endpoint type | Select **Source endpoint**|
 |Endpoint Identifier | Type a name, such as **`orasource`**|
 |Source Engine | oracle|
-|Server name | Enter the Oracle RDS DNS|
+|Server name | Enter the Oracle RDS DNS value shown in parent CloudFormation stack output|
 |Port | 1521|
 |Username | Enter as dbadmin|
 |Password| Enter oraadmin123|
@@ -173,7 +173,7 @@ Please leave the rest of the settings default. Make sure that the database name,
 
 
 After creating the endpoint, you should test the connection. Click on the endpoint and go to Connections Tab. Choose **Test connection** option. 
-Choose the DMS instance created by the CloudFormation stack and click Run Test. The Status should return as successful after some time.
+Choose the DMS instance created by the CloudFormation stack and click **Run Test**. The Status should return as successful after some time.
 
 
 ![](./assets/dms3.png) 
@@ -187,7 +187,7 @@ Click **Create endpoint**. Enter the values as follows:
 |Endpoint type | Select **Target endpoint**|
 |Endpoint Identifier | Type a name, such as **`aurtarget`**|
 |Target Engine | aurora-postgresql|
-|Server name | Enter the Aurora Cluster Endpoint|
+|Server name | Enter the AuroraClusterEndpointName value shown in parent CloudFormation stack output|
 |Port | 5432|
 |Username | Enter as auradmin|
 |Password| Enter auradmin123|
@@ -243,7 +243,7 @@ AWS DMS uses table-mapping rules to map data from the source to the target Dynam
 |Target database Endpoint | Choose ddbtarget|
 |Migration Type| Choose Migrate existing data|
   
-> **_NOTE:_** Typical production migration involves full load followed by continuous data capture CDC. This can be acheived by using choosing option Migrate existing data and replicate ongoing changes. for this illustration, we will go with full load only.
+> **_NOTE:_** Typical production migration involves full load followed by continuous data capture CDC. This can be achieved by using choosing option Migrate existing data and replicate ongoing changes. For this lab, we will go with full load only.
 
 4. Click **Start task on create**
 
@@ -253,12 +253,12 @@ AWS DMS uses table-mapping rules to map data from the source to the target Dynam
 5. Under Task settings , enter as below
     - Target Table preparation mode  - Choose **Do Nothing**
     - Include LOB columns in replication - Choose **Limited LOB Mode**
-    - Enable **Cloud Watch Logs**
+    - Select **Enable CloudWatch Logs**
 
 ![](./assets/dms-task1-2.png) 
 
  6. Under Table Mapping section, enter as below:
- - choose **JSON Editor** and copy & paste the following transformation code.
+ - choose **JSON Editor** and copy & paste the following mapping code.
   
 ```json
    {  
@@ -317,25 +317,27 @@ AWS DMS uses table-mapping rules to map data from the source to the target Dynam
  ```
    
 
-   > **_NOTE:_** As part of the migration task, we have created transformation rules to add few extra attributes from the original data. for e.g. RIDER_EMAIL as riderid (partition_key) and ID & PICKUP_DATETIME as tripinfo(sort key). This will ensure that our new design will able to uniquely identify the trip data by riderid. Also, we have combined many vehicle attributes and store it as DriverDetails. In summary, this table stores all the rider and driver information in a de-normalized manner.
+> **_NOTE:_** As part of the migration task, we have created transformation rules to add few extra attributes from the original data. for e.g. RIDER_EMAIL as riderid (partition_key) and ID & PICKUP_DATETIME as tripinfo (sort key). This will ensure that our new design will able to uniquely identify the trip data by riderid. Also, we have combined many vehicle attributes and stored it as DriverDetails. In summary, this table stores all the rider and driver information in a de-normalized format.
 
-   ![](./assets/dms-task1-3.png) 
+
+![](./assets/dms-task1-3.png) 
 
  7. Do not modify anything in the Advanced settings.
 
- 8. Click **Create task**. The task will begin immediately. If not, please start the task (Click the Actions and Start/Restart task).
+ 8. Click **Create task**. The task will begin immediately. If not, start the task manually (Select the task, Click Actions and then Start/Restart task).
 
   
 ## Monitoring Replication Task for DynamoDB 
 
-After task is created, please monitor the task, by looking at the console as shown below. You can also look at the CloudWatch logs for more information.
+After task is created, monitor the task by looking at the console as shown below. You can also look at the CloudWatch logs for more information.
 
 ![](./assets/dms-task1-4.png) 
 
 > **_NOTE:_** This task may take 12 to 15 minutes.  Please proceed to the next step.  After a full load, you will see 128,714 Rows are migrated.
 
 ## Creating Replication Task for Aurora Migration
- Now, we will migrate four tables (Riders, Drivers, Payment and Billing) from RDS Oracle to Aurora PostgreSQL. We have already created the DDL for those tables in Aurora as part of the environment setup.
+
+ Now, we will migrate four tables (Riders, Drivers, Payment and Billing) from RDS Oracle to Aurora PostgreSQL. We have already created those tables in Aurora PostgreSQL as part of the environment setup.
 
  1. Open the [AWS DMS console](https://us-east-1.console.aws.amazon.com/dms/home?region=us-east-1), and choose **database migration tasks** in the navigation pane. 
 
@@ -358,8 +360,8 @@ After task is created, please monitor the task, by looking at the console as sho
  5. Under Task settings , enter as below
     - Target Table preparation mode  - Choose **Do Nothing**
     - Include LOB columns in replication - Choose **Limited LOB Mode**
-    - Enable **Validation**
-    - Enable **Cloud Watch Logs**
+    - Select **Enable validation**
+    - Select **Enable CloudWatch Logs**
 
  ![](./assets/dms-task2-2.png)
 
@@ -458,23 +460,24 @@ After task is created, please monitor the task, by looking at the console as sho
     }
       ```
    
-   > **_NOTE:_** As part of the migration task, we have created the above mapping rule to include tables that are related to Payment and Billing use case only. DMS provides rich set of selection and transformation rules for migration (e.g. selecting specific tables, remove column, define primary key etc.). For this lab, we will convert the source schema, table and column names to lower case, and rename the schema owner from taxi to public in Aurora PostgreSQL database. Please refer to [DMS](https://docs.aws.amazon.com/dms/latest/userguide/CHAP_Tasks.CustomizingTasks.TableMapping.html) documentation to learn more.
+> **_NOTE:_** As part of the migration task, we have created the above mapping rule to include tables that are related to Payment and Billing use case only. DMS provides rich set of selection and transformation rules for migration (e.g. selecting specific tables, remove column, define primary key etc.). For this lab, we will convert the source schema, table and column names to lower case, and rename the schema owner from taxi to public in Aurora PostgreSQL database. Please refer to [DMS](https://docs.aws.amazon.com/dms/latest/userguide/CHAP_Tasks.CustomizingTasks.TableMapping.html) documentation to learn more.
+
 
  ![](./assets/dms-task2-3.png) 
 
- 4. Do not modify anything in the Advanced settings.
+ 7. Do not modify anything in the Advanced settings.
 
- 5. Click **Create task**. The task will begin immediately. If the task is not started, please start the task manually (Click the Actions and Start/Restart task).
+ 8. Click **Create task**. The task will begin immediately. If the task is not started, start the task manually (Select the task, Click Actions and then Start/Restart task).
 
 ![](./assets/dms-task2-4.png) 
 
  ## Monitoring Replication Task for Aurora PostgreSQL
 
-1. Go to Replication task and **Click the task** and look at the Table Statistics.
+1. Go to **Data Migration tasks** and Click the task name and look at the **Table Statistics** tab.
 
 ![](./assets/dms-task-2-5.png)
 
-2. You can also see the logs in CloudWatch Logs.
+2. You can also review the replication task details in CloudWatch Logs.
 
 ![](./assets/dms-task2-6.png)
 
@@ -485,6 +488,6 @@ After task is created, please monitor the task, by looking at the console as sho
 
 1. **ora2ddb** task status as "Load Completed". TRIPS table full load row count as 128,714
 
-2. **ora2aur** task status as "Load Completed". Table and Fullload count should be: Drivers (Count-100,001), Payment (Count-60,001), Billing (Count -60,001), Riders (Count-100,000) 
+2. **ora2aur** task status as "Load Completed". Table and Full load count should be: DRIVERS (Count-100,001), PAYMENT (Count-60,001), BILLING (Count -60,001), RIDERS (Count-100,000) 
 
-**Congrats!!** You have successfully completed the Lab1. Now you can proceed to [Lab 2](../lab2-TaxiBookingAndPayments/). 
+**Congrats!!** You have successfully completed Lab 1. Now you can proceed to [Lab 2](../lab2-TaxiBookingAndPayments/). 

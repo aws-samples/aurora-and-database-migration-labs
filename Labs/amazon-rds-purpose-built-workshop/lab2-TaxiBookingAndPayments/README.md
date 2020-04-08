@@ -1,4 +1,4 @@
-# LAB 2: Simulate Taxi Booking, Billing and Payments using Amazon DynamoDB, DynamoDB Streams, AWS Lambda and Amazon Aurora PostgreSQL
+# Lab 2: Simulate Taxi Booking, Billing and Payments using Amazon DynamoDB, DynamoDB Streams, AWS Lambda and Amazon Aurora PostgreSQL
 
 * [Overview](#overview)  
 * [Setup AWS Cloud 9 Environment](#aetup-aws-cloud9-environment)  
@@ -323,4 +323,4 @@ select * from payment where description='Payment cycle Jan 2020';
 \q
 ```
 
-**Congrats!!** You have successfully completed the Lab2. Now you can proceed to [Lab 3](../lab3-AthenaFederatedQuery/). 
+**Congrats!!** You have successfully completed Lab 2. Now you can proceed to [Lab 3](../lab3-AthenaFederatedQuery/). 
