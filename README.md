@@ -10,6 +10,8 @@ This github repo contains Aurora MySQL and PostgreSQL Labs, Aurora Serverless La
 
 [Aurora MySQL Serverless Data API Live Demo](https://github.com/aws-samples/aurora-and-database-migration-labs/blob/master/Labs/Aurora%20MySQL/Aurora%20MySQL%20Serverless%20Data%20API%20Live%20Demo.pdf) - In this demo you will setup an Amazon Pinpoint project, configure a long code with 2 way SMS enabled; setup networking infrastructure, Aurora MySQL Serverless cluster and bootstrap the database using AWS Lambda; enable Data API for Aurora serverless cluster. You will use AWS Cloudformation to setup most of the components. Finally you will use the provisioned long code to send your vote and receive survery confirmation.
 
+[Database Modernization Hands On Workshop](https://github.com/aws-samples/aurora-and-database-migration-labs/tree/master/Labs/amazon-rds-purpose-built-workshop) - A tutorial for developers, DBAs and data engineers to get hands-on experience on how to migrate relational data to AWS purpose-built databases such as Amazon DynamoDB and Amazon Aurora using AWS DMS and build data processing applications on top of it. You’ll get hands-on experience to evaluate the application use cases, decide on the target data store, and migrate a sample relational schema into AWS cloud using AWS DMS. You’ll leverage AWS services such as Amazon DynamoDB, Amazon S3, and Amazon relational database service (RDS).
+
 ## License Summary
 
 This sample code is made available under a modified MIT license. See the LICENSE file.
