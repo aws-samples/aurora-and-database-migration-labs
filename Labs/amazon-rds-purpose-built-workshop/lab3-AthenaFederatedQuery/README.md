@@ -5,7 +5,7 @@
   * [Preparing the Environment](#preparing-the-environment)
     + [Setup environment variables on Cloud9 terminal window](#setup-environment-variables-on-cloud9-terminal-window)
     + [Create a copy of trips table for federated query](#create-a-copy-of-trips-table-for-federated-query)
-    + [Create a AmazonAthenaPreviewFunctionality workgroup.](#create-a-amazonathenapreviewfunctionality-workgroup)
+    + [Create a AmazonAthenaPreviewFunctionality workgroup](#create-a-amazonathenapreviewfunctionality-workgroup)
     + [Switch to the AmazonAthenaPreviewFunctionality workgroup](#switch-to-the-amazonathenapreviewfunctionality-workgroup)
   * [Setup Athena Connectors and Catalogs](#setup-athena-connectors-and-catalogs)
     + [Setting up Amazon DynamoDB Connector](#setting-up-amazon-dynamodb-connector)
@@ -26,7 +26,7 @@ In this lab, we will leverage this feature to query data stored in Amazon Dynamo
 ## Prerequisites
 
 1. Use Chrome browser to do this lab.
-2. You should have completed both [Lab1](https://github.com/aws-samples/amazon-rds-purpose-built-workshop/tree/master/lab1-TaxiDataMigration) and [Lab2](https://github.com/aws-samples/amazon-rds-purpose-built-workshop/tree/master/lab2-TaxiBookingAndPayments) from the [github repository.](https://github.com/aws-samples/amazon-rds-purpose-built-workshop)
+2. You should have completed both [Lab1](https://github.com/aws-samples/aurora-and-database-migration-labs/tree/master/Labs/amazon-rds-purpose-built-workshop/lab1-TaxiDataMigration) and [Lab2](https://github.com/aws-samples/aurora-and-database-migration-labs/tree/master/Labs/amazon-rds-purpose-built-workshop/lab2-TaxiBookingAndPayments) from the [github repository.](https://github.com/aws-samples/aurora-and-database-migration-labs/tree/master/Labs/amazon-rds-purpose-built-workshop)
 
 ## Preparing the Environment
 
@@ -35,7 +35,7 @@ In this lab, we will leverage this feature to query data stored in Amazon Dynamo
 1) Go to Cloud9 IDE terminal window and set the following environment variables if not done already as part of Lab2. Substitute the string (_substitute-name-of-copied-cf-stack-name_) in the command below with the name of the Amazon CloudFormation parent stack starting with **mod-** (e.g. _mod-aa8afde9acf04c7f_).
 
 ```shell script
-AWSDBWORKSHOP_CFSTACK_NAME="substitue-name-of-copied-cf-stack-name"
+AWSDBWORKSHOP_CFSTACK_NAME="substitute-name-of-copied-cf-stack-name"
 AURORADB_NAME=$(aws cloudformation describe-stacks --stack-name $AWSDBWORKSHOP_CFSTACK_NAME | jq -r '.Stacks[].Outputs[] | select(.OutputKey=="AuroraDBName") | .OutputValue')
 echo $AURORADB_NAME
 AURORACLUSTERENDPOINT_NAME=$(aws cloudformation describe-stacks --stack-name $AWSDBWORKSHOP_CFSTACK_NAME | jq -r '.Stacks[].Outputs[] | select(.OutputKey=="AuroraClusterEndpointName") | .OutputValue')
@@ -46,11 +46,13 @@ echo $AURORADBMASTERUSER_NAME
 
 2) Connect to the Aurora PostgreSQL cluster using the below command. Enter _auradmin123_ as password when prompted.
 
-sudo psql -h $AURORACLUSTERENDPOINT_NAME -U $AURORADBMASTERUSER_NAME -d $AURORADB_NAME
+```shell script
+psql -h $AURORACLUSTERENDPOINT_NAME -U $AURORADBMASTERUSER_NAME -d $AURORADB_NAME
+```
 
 ### Create a copy of trips table for federated query
 
-Run the below SQL Command to create a copy of the trip table in Aurora PostgreSQL without pickup_datetime and dropoff_datetime _timestamp without time zone_ fields. This is to get around a [known bug](https://github.com/awslabs/aws-athena-query-federation/issues/21](https://github.com/awslabs/aws-athena-query-federation/issues/21) associated with JDBC connector used by Athena federated query.
+Run the below SQL Command to create a copy of the trip table in Aurora PostgreSQL without pickup_datetime and dropoff_datetime _timestamp without time zone_ fields. This is to get around a [known bug](https://github.com/awslabs/aws-athena-query-federation/issues/21) associated with JDBC connector used by Athena federated query.
 
 ```shell script
 create table trips_query
@@ -92,24 +94,25 @@ select * from trips_query;
 select rider_email, trip_info from trips_query;
 ```
 
-### Create a AmazonAthenaPreviewFunctionality workgroup.
+### Create a AmazonAthenaPreviewFunctionality workgroup
 
 All Athena queries originating from the Workgroup _AmazonAthenaPreviewFunctionality_ will be considered preview test queries.
 
 1. Open the[AWS Management Console for Athena](https://console.aws.amazon.com/athena/home?region=us-east-1).
-2. If this is your first time visiting the AWS Management Console for Athena, you will get a Getting Started page. Choose **Get Started** to open the Query Editor. If this isn't your first time, the AthenaQuery Editoropens.
+2. If this is your first time visiting the AWS Management Console for Athena, you will get a Getting Started page. Choose **Get Started** to open the Query Editor. If this isn't your first time, the AthenaQuery Editor opens.
 3. Select **Workgroup:primary** tab and then click **Create workgroup** as shown below.
 4. Provide the following values.  Leave the rest to default.
+
   1. Specify the Workgroup name as **AmazonAthenaPreviewFunctionality**.
   2. Specify the S3 bucket name with a  **s3://**  prefix and  **/**  suffix that was created as part of the CloudFormation Stack (Look for S3bucketName in the Outputs section).  For e.g. _s3://mod-aa8afde9acf04c7f-dbworkshops3bucket-12vvoqlrar5b3/_
-
- ![workgroup.png](./assets/workgroup.png)
  
 5. Click create workgroup.
 
+ ![workgroup.png](./assets/workgroup.png)
+
 ### Switch to the AmazonAthenaPreviewFunctionality workgroup
 
-In the **Workgroups**  panel, choose the **AmazonAthenaPreviewFunctionality** workgroup and then choose  **Switch workgroup**. You will be redirecte back to the Athena console. Choose **Get Started** to open the Query Editor again.
+In the **Workgroups**  panel, choose the **AmazonAthenaPreviewFunctionality** workgroup and then choose  **Switch workgroup**. You will be redirected back to the Athena console. Choose **Get Started** to open the Query Editor again.
 
  ![switch.png](./assets/switch.png)
 
@@ -136,15 +139,14 @@ This connector enables Amazon Athena to communicate with DynamoDB, making your t
 
 8.  You will be be taken to AWS Lambda home page where the connector will be deployed as a SAM Application. Provide values for the following parameters and leave the rest of the values to the default.
 
-**SpillBucket**: Specify the S3 bucket name that was created as part of the CloudFormation Stack for e.g. mod-aa8afde9acf04c7f-dbworkshops3bucket-1511cfk17lzed
+ **SpillBucket**: Specify the S3 bucket name that was created as part of the CloudFormation Stack for e.g. mod-aa8afde9acf04c7f-dbworkshops3bucket-1511cfk17lzed
 
-**AthenaCatalogName**: taxiddb
+ **AthenaCatalogName**: taxiddb
 
  ![ddbconn.png](./assets/ddbconn.png)
 
-Select the option **_I acknowledge that this app creates custom IAM Roles_** and Click **Deploy**.
-
-         
+ Select the option **_I acknowledge that this app creates custom IAM Roles_** and Click **Deploy**.
+        
 >**Note:** It will take a few minutes to deploy. After successful deployment, you can see the Lambda function deployed in your account as shown below.
 
  ![lambda.png](./assets/lambda.png)
@@ -152,8 +154,6 @@ Select the option **_I acknowledge that this app creates custom IAM Roles_** and
 ### Setting up catalog for querying DynamoDB
 
 In this step, we will create a catalog named ddbcatalog as shown below.
-
-**Click on data sources tab**
 
 1. Go Back previous Athena **Data sources** window and on the **Connection details: Amazon DynamoDB** panel, click the refresh button in the **Lambda function** input.
 2. Choose the Lambda function **taxiddb** and provide a catalog name as **ddbcatalog**.
@@ -183,23 +183,23 @@ This connector enables Amazon Athena to access your SQL database or RDS/Aurora i
 
 8. You will be taken to AWS Lambda home page where the connector will be deployed as a SAM Application. Provide values for the following parameters and leave the rest of the values to the default.
 
-**SecretNamePrefix**  : dbadmin
+ **SecretNamePrefix**  : dbadmin
 
-**SpillBucket**: Specify the S3 bucket name that was created as part of the CloudFormation Stack for e.g. mod-aa8afde9acf04c7f-dbworkshops3bucket-1511cfk17lzed
+ **SpillBucket**: Specify the S3 bucket name that was created as part of the CloudFormation Stack for e.g. mod-aa8afde9acf04c7f-dbworkshops3bucket-1511cfk17lzed
 
-**DefaultConnectionString** : postgres://<AuroraJDBCConnectionString from the output of parent CloudFormation stack>?user=auradmin&password=auradmin123 for e.g. postgres://jdbc:postgresql://akolab-auroracluster-qlkwnb51f0ir.cluster-ckxdapvbefiz.us-east-1.rds.amazonaws.com:5432/taxidb?user=auradmin&password=auradmin123
+ **DefaultConnectionString** : postgres://<AuroraJDBCConnectionString from the output of parent CloudFormation stack>?user=auradmin&password=auradmin123 for e.g. postgres://jdbc:postgresql://akolab-auroracluster-qlkwnb51f0ir.cluster-ckxdapvbefiz.us-east-1.rds.amazonaws.com:5432/taxidb?user=auradmin&password=auradmin123
 
-**LambdaFunctionName** : taxirdb
+ **LambdaFunctionName** : taxirdb
 
-**SecurityGroupIds** : specify the LambdaSecurityGroupId from the outputs of CloudFormation stack
+ **SecurityGroupIds** : specify the LambdaSecurityGroupId from the outputs of CloudFormation stack
 
-**SubnetIds** : specify the LambdaSubnet1,LambdaSubnet2 (separated by commas) from the output of CloudFormation stack
+ **SubnetIds** : specify the LambdaSubnet1,LambdaSubnet2 (separated by commas) from the output of CloudFormation stack
 
 >**Note:** The JDBC connector can connect to database using credentials stored in AWS Secrets manager or directly by specifying userid and password. For this lab, we will specify the userid and password directly in the connection string. We have provided a dummy value "dbadmin" as a secretname prefix as this parameter seems to be a mandatory requirement.
 
  ![sam.png](./assets/sam.png)
 
-Select the option **_I acknowledge that this app creates custom IAM Roles_** and Click **Deploy**.
+ Select the option **_I acknowledge that this app creates custom IAM Roles_** and Click **Deploy**.
 
 >**Note:** It will take a few minutes to deploy. After successful deployment, you can see the Lambda function deployed in your account as shown below.
 
@@ -360,7 +360,7 @@ CREATE EXTERNAL TABLE NYTaxiRides (
   MSCK REPAIR TABLE nytaxirides;
   ```
 
-This will create a table partitioned by year,month and type. The files are already created and stored in parquet format in AWS S3.
+ This will create a table partitioned by year,month and type. The files are already created and stored in parquet format in AWS S3.
 
 2. Now we will perform month-wise comparison of 2016 DynamoDB data with previous year data (2015) stored in S3. This is helpful if you wish to perform trend analysis where hot data is kept in DynamoDB and cold data is stored in S3.
 
