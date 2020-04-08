@@ -25,7 +25,7 @@ In this lab, we will leverage this feature to query data stored in Amazon Dynamo
 
 ## Prerequisites
 
-1. Use Chrome browser to do this lab.
+1. Use **Chrome browser** to do this lab as we have noticed some issues with Firefox while doing this Lab.
 2. You should have completed both [Lab1](https://github.com/aws-samples/aurora-and-database-migration-labs/tree/master/Labs/amazon-rds-purpose-built-workshop/lab1-TaxiDataMigration) and [Lab2](https://github.com/aws-samples/aurora-and-database-migration-labs/tree/master/Labs/amazon-rds-purpose-built-workshop/lab2-TaxiBookingAndPayments) from the [github repository.](https://github.com/aws-samples/aurora-and-database-migration-labs/tree/master/Labs/amazon-rds-purpose-built-workshop)
 
 ## Preparing the Environment
@@ -52,7 +52,7 @@ psql -h $AURORACLUSTERENDPOINT_NAME -U $AURORADBMASTERUSER_NAME -d $AURORADB_NAM
 
 ### Create a copy of trips table for federated query
 
-Run the below SQL Command to create a copy of the trip table in Aurora PostgreSQL without pickup_datetime and dropoff_datetime _timestamp without time zone_ fields. This is to get around a [known bug](https://github.com/awslabs/aws-athena-query-federation/issues/21) associated with JDBC connector used by Athena federated query.
+Run the below SQL Command to create a copy of the trip table in Aurora PostgreSQL without 'pickup_datetime' and 'dropoff_datetime' _timestamp without time zone_ fields. This is to get around a [known bug](https://github.com/awslabs/aws-athena-query-federation/issues/21) associated with JDBC connector used by Athena federated query, which was still open as of authoring this Lab.
 
 ```shell script
 create table trips_query
@@ -104,7 +104,7 @@ All Athena queries originating from the Workgroup _AmazonAthenaPreviewFunctional
 4. Provide the following values.  Leave the rest to default.
 
    1. Specify the Workgroup name as **AmazonAthenaPreviewFunctionality**.
-   2. Specify the S3 bucket name with a  **s3://**  prefix and  **/**  suffix that was created as part of the CloudFormation Stack (Look for S3bucketName in the Outputs section).  For e.g. _s3://mod-aa8afde9acf04c7f-dbworkshops3bucket-12vvoqlrar5b3/_
+   2. Specify the S3 bucket name with a  **s3://**  prefix and  **/**  suffix that was created as part of the CloudFormation Stack (Look for S3bucketName in the parent CloudFormation stack Outputs section).  For e.g. _s3://mod-aa8afde9acf04c7f-dbworkshops3bucket-12vvoqlrar5b3/_
  
 5. Click create workgroup.
 
@@ -116,15 +116,15 @@ In the **Workgroups**  panel, choose the **AmazonAthenaPreviewFunctionality** wo
 
  ![switch.png](./assets/switch.png)
 
- Now, you are ready to deploy the connectors in your account.  To learn more about the connectors, please see documentation [connect-to-a-data-source-lambda.html](https://docs.aws.amazon.com/athena/latest/ug/connect-to-a-data-source-lambda.html).
+ Now, you are ready to deploy the Athena connectors in your AWS account. To learn more about Athena connectors, please see documentation [connect-to-a-data-source-lambda.html](https://docs.aws.amazon.com/athena/latest/ug/connect-to-a-data-source-lambda.html).
 
 ## Setup Athena Connectors and Catalogs
 
 ### Setting up Amazon DynamoDB Connector
 
-This connector enables Amazon Athena to communicate with DynamoDB, making your trips tables accessible via SQL. For more information about the connector usage, parameters and limitations, refer to [athena-dynamodb](https://github.com/awslabs/aws-athena-query-federation/tree/master/athena-dynamodb) documentation.
+This connector enables Amazon Athena to communicate with DynamoDB, making the _trips_ tables accessible via SQL. For more information about the connector usage, parameters and limitations, refer to [athena-dynamodb](https://github.com/awslabs/aws-athena-query-federation/tree/master/athena-dynamodb) documentation.
 
-1. Ensure that current AWS region is **US east (N Virginia)**
+1. Ensure that current AWS region is **US East (N Virginia)**
 2. Click on **data sources** tab
 3. Click **Connect data source**
 4. Select **Query a data source (Beta)**
@@ -137,7 +137,7 @@ This connector enables Amazon Athena to communicate with DynamoDB, making your t
 
  ![ddb.png](./assets/ddb.png)
 
-8. You will be be taken to AWS Lambda home page where the connector will be deployed as a SAM Application. Provide values for the following parameters and leave the rest of the values to the default.
+8. You will be be taken to AWS Lambda home page where the connector will be deployed as a SAM Application. Provide values for the following parameters and leave the rest to the default.
 
    **SpillBucket**: Specify the S3 bucket name that was created as part of the CloudFormation Stack for e.g. mod-aa8afde9acf04c7f-dbworkshops3bucket-1511cfk17lzed
    
@@ -153,11 +153,11 @@ This connector enables Amazon Athena to communicate with DynamoDB, making your t
 
 ### Setting up catalog for querying DynamoDB
 
-In this step, we will create a catalog named ddbcatalog as shown below.
+In this step, we will create a catalog named _ddbcatalog_ as shown below.
 
-1. Go Back previous Athena **Data sources** window and on the **Connection details: Amazon DynamoDB** panel, click the refresh button in the **Lambda function** input.
+1. Go Back previous Athena **Data sources** window in your browser and on the **Connection details: Amazon DynamoDB** panel, click the refresh button next to the **Lambda function** input.
 2. Choose the Lambda function **taxiddb** and provide a catalog name as **ddbcatalog**.
-3. (optional) Type a description for the Connector for e.g. _catalog to query DDB table via SQL_
+3. (Optional) Type a description for the Connector for e.g. _catalog to query DDB table via SQL_
 4. Click Connect
 
  ![catalog.png](./assets/catalog.png)
@@ -166,9 +166,9 @@ Now, we need to repeat the same process to setup Athena JDBC connector for Auror
 
 ### Setting up JDBC connector for Aurora PostgreSQL database
 
-This connector enables Amazon Athena to access your SQL database or RDS/Aurora instance(s) using JDBC driver. For more information about the connector usage, parameters and limitations, refer to [athena-jdbc](https://github.com/awslabs/aws-athena-query-federation/tree/master/athena-jdbc) documentation.
+This connector enables Amazon Athena to access your Amazon RDS and Amazon Aurora databases using JDBC driver. For more information about the connector usage, parameters and limitations, refer to [athena-jdbc](https://github.com/awslabs/aws-athena-query-federation/tree/master/athena-jdbc) documentation.
 
-1. Ensure that current AWS region is **US east (N Virginia)**
+1. Ensure that current AWS region is **US East (N Virginia)**
 2. Click on **data sources** tab
 3. Click **Connect data source**
 4. Select **Query a data source (Beta)**
@@ -181,13 +181,13 @@ This connector enables Amazon Athena to access your SQL database or RDS/Aurora i
 
  ![pgconn.png](./assets/pgconn.png)
 
-8. You will be taken to AWS Lambda home page where the connector will be deployed as a SAM Application. Provide values for the following parameters and leave the rest of the values to the default.
+8. You will be taken to AWS Lambda home page where the connector will be deployed as a SAM Application. Provide values for the following parameters and leave the rest to the default.
 
    **SecretNamePrefix**  : dbadmin
 
    **SpillBucket**: Specify the S3 bucket name that was created as part of the CloudFormation Stack for e.g. mod-aa8afde9acf04c7f-dbworkshops3bucket-1511cfk17lzed
 
-   **DefaultConnectionString** : postgres://<AuroraJDBCConnectionString from the output of parent CloudFormation stack>?user=auradmin&password=auradmin123 for e.g. postgres://jdbc:postgresql://akolab-auroracluster-qlkwnb51f0ir.cluster-ckxdapvbefiz.us-east-1.rds.amazonaws.com:5432/taxidb?user=auradmin&password=auradmin123
+   **DefaultConnectionString** : postgres://\<AuroraJDBCConnectionString from the output of parent CloudFormation stack\>?user=auradmin&password=auradmin123 for e.g. postgres://jdbc:postgresql://akolab-auroracluster-qlkwnb51f0ir.cluster-ckxdapvbefiz.us-east-1.rds.amazonaws.com:5432/taxidb?user=auradmin&password=auradmin123
 
    **LambdaFunctionName** : taxirdb
 
@@ -197,7 +197,7 @@ This connector enables Amazon Athena to access your SQL database or RDS/Aurora i
    
    Select the option **_I acknowledge that this app creates custom IAM Roles_** and Click **Deploy**.
 
->**Note:** The JDBC connector can connect to database using credentials stored in AWS Secrets manager or directly by specifying userid and password. For this lab, we will specify the userid and password directly in the connection string. We have provided a dummy value "dbadmin" as a secretname prefix as this parameter seems to be a mandatory requirement.
+>**Note:** The JDBC connector can connect to database using credentials stored in AWS Secrets manager or directly by specifying an userid and password. For this lab, we will specify the userid and password directly in the connection string. We have provided a dummy value as a secretname prefix as this parameter seems to be mandatory.
 
  ![sam.png](./assets/sam.png)
 
@@ -209,29 +209,29 @@ This connector enables Amazon Athena to access your SQL database or RDS/Aurora i
 
 In this step, we will create a catalog named rdbcatalog as shown below.
 
-1. Go Back previous Athena **Data sources** window and on the **Connection details: PostgreSQL** panel, click the refresh button in the **Lambda function** input.
+1. Go Back previous Athena **Data sources** window in your browser and on the **Connection details: PostgreSQL** panel, click the refresh button next to the **Lambda function** input.
 2. Choose the Lambda function **taxirdb**  and provide a catalog name as **rdbcatalog**.
-3. (optional) Type a description for the Connector
+3. (Optional) Type a description for the Connector
 4. Click Connect
 
-Now, we are ready to query both databases using Athena federated query.
+Now, we are ready to query both DynamoDB and Aurora PostgreSQL using Athena federated query.
 
 ## Query multiple data sources using Athena Federated Query
 
 ### Use Case 1:  Querying data from Amazon DynamoDB and Amazon Aurora
 
-In this use case, we will validate data accuracy and consistency for the trip record created as part of Lab2.
+In this use case, we will validate data accuracy and consistency for the trip record created as part of Lab 2.
 
 1. Click **Query Editor** tab.
-2. In the Athena Query Editor panel, _set up query result location in Amazon S3_ by clicking the banner at the top.
+2. In the Athena Query Editor panel, click the banner at the top showing **_set up query result location in Amazon S3_**.
 
  ![athenaqryloc.png](./assets/athenaqryloc.png)
 
-3. Specify the S3 bucket location in the format s3://<S3bucketName from the output of CloudFormation stack>/athena/ and click save. For e.g. s://mod-aa8afde9acf04c7f-dbworkshops3bucket-1511cfk17lzed/athena/
+3. Specify the S3 bucket location in the format s3://\<S3bucketName from the output of CloudFormation stack\>/athena/ and click save. For e.g. s://mod-aa8afde9acf04c7f-dbworkshops3bucket-1511cfk17lzed/athena/
 
  ![s3bucketloc.png](./assets/s3bucketloc.png)
 
-4. Now you can start entering your query in the query pane. Run some sample queries to connect to Aurora database. For Aurora, we can directly use the lambda function name as a catalog name.
+4. Now you can start entering your query in the query pane. Run some sample queries on the Aurora PostgreSQL database. For Aurora, you can directly use the lambda function name as a catalog name.
 
 
  ```shell script
@@ -247,14 +247,14 @@ select \* from "lambda:taxirdb".public.trips_query
 
 >**Note:** If the **Run Query** button is disabled, click Query Editor tab again or refresh the window.
 
-5. Run some sample queries to connect to DynamoDB table either using the catalog name or directly referring the lambda function.
+5. Run some sample queries on DynamoDB either using the catalog name or directly referring the lambda function.
 
  ```shell script
 select * from ddbcatalog.default."aws-db-workshop-trips" where riderid='person69156@example.com'
 select * from "lambda:taxiddb".default."aws-db-workshop-trips" where riderid='person69156@example.com'
  ```
 
-6. Run the below query which joins (Inner join) the trip data from Aurora and DynamoDB tables.  We have used the riderid attribute from DynamoDB to join with rider_email in trips_query table. Trips_info field is used as an additional join condition. The purpose of the query is to check data consistency of trip data between the two data stores.
+6. Run the below query which joins (Inner join) the trip data from Aurora PostgreSQL and DynamoDB tables.  We have used the _riderid_ attribute from DynamoDB to join with _rider\_email_ in trips_query table. _trips\_info_ field is used as an additional join condition. The purpose of the query is to check data consistency of trip data between the two data stores.
 
  ```shell script
 SELECT ddb.riderid,ddb.tripinfo , ddb.fare_amount "DDB-Fareamount", rdb.fare_amount "RDB-Fareamount", ddb.tolls_amount "DDB-Tollsamount", rdb.tolls_amount "RDB-Tollsamount", ddb.passenger_count "DDB-passenger_count", rdb.passenger_count "RDB-passenger_count", ddb.tip_amount "DDB-Tipamount", rdb.tip_amount "RDB-Tipamount",  ddb.total_amount "DDB-Totalamount", rdb.total_amount "RDB-Totalamount"
@@ -270,7 +270,7 @@ and ddb.tripinfo=rdb.trip_info
 
 In this example, we will perform an adhoc analytics to get the trends on total rides,number of rides per vendor, along with the average fair amount for Green taxi rides.  We will use trip data from the [NY taxi public dataset](https://registry.opendata.aws/nyc-tlc-trip-records-pds/) for this illustration.
 
-1. Choose the datasource as " **awsdatacatalog**" and create an external table to refer the already saved NY taxi dataset in AWS S3.
+1. Choose the datasource as "**awsdatacatalog**" and create an external table to refer the already saved NY taxi dataset in AWS S3.
 
  ```shell script
 CREATE DATABASE athenataxidb;
@@ -303,7 +303,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS taxigreen (
 
 2 . Now you can query both historical as well as current dataset in DynamoDB using federated query.  The below query shows the trend on riders and average amount between two data sets for each vendor.
 
->**Note:** If you get an internal service error please run the query again.
+>**Note:** If you get an internal service error, please run the query again.
 
  ```shell script
 with s3history as (SELECT 
@@ -337,7 +337,7 @@ JOIN ddbcurrent ON s3history.vendor = ddbcurrent.vendor_id;
 
 By partitioning your data, you can restrict the amount of data scanned by each query, thus improving performance and reducing cost. Athena leverages Hive for [partitioning](https://cwiki.apache.org/confluence/display/Hive/LanguageManual+DDL#LanguageManualDDL-AlterPartition) data. You can partition your data by any key. A common practice is to partition the data based on time, often leading to a multi-level partitioning scheme. For example, a customer who has data coming in every hour might decide to partition by year, month, date, and hour. Another customer, who has data coming from many different sources but loaded one time per day, may partition by a data source identifier and date.
 
-1. In the query pane, copy the following statement to create  the NYTaxiRides table, and then choose\ **Run Query** :
+1. In the query pane, paste the following statement to create the NYTaxiRides table, and then choose **Run Query**.
 
  ```shell script
 CREATE EXTERNAL TABLE NYTaxiRides (
@@ -360,9 +360,9 @@ CREATE EXTERNAL TABLE NYTaxiRides (
   MSCK REPAIR TABLE nytaxirides;
   ```
 
- This will create a table partitioned by year,month and type. The files are already created and stored in parquet format in AWS S3.
+   This will create a table partitioned by year,month and type. The files are already created and stored in parquet format in AWS S3.
 
-2. Now we will perform month-wise comparison of 2016 DynamoDB data with previous year data (2015) stored in S3. This is helpful if you wish to perform trend analysis where hot data is kept in DynamoDB and cold data is stored in S3.
+2. Now we will perform month-wise comparison of 2016 DynamoDB data with previous year (2015) data stored in AWS S3. This is helpful in a scenario where you wish to perform trend analysis on hot data stored in DynamoDB and cold data stored in AWS S3.
 
 >**Note:** If you get an internal service error please run the query again.
 
