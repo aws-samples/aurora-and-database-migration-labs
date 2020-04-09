@@ -23,6 +23,8 @@
 
 In this lab, we will leverage this feature to query data stored in Amazon DynamoDB, Amazon Aurora PostgreSQL and AWS S3 using a single SQL query.  Athena executes federated queries using Data Source Connectors that run on [AWS Lambda](http://aws.amazon.com/lambda).
 
+:warning: **We don't recommend to onboard your production workload to Athena Federated Query (Preview) yet. Query performance may vary between the preview Workgroup and the other workgroups in your account. Additionally, AWS may add new features and bug fixes to the preview Workgroup that may not be backwards compatible.**
+
 ## Prerequisites
 
 1. Use **Chrome browser** to do this lab as we have noticed some issues with Firefox while doing this Lab.
