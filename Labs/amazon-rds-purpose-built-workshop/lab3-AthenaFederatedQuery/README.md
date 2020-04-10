@@ -244,7 +244,7 @@ show databases in `lambda:taxirdb`;
 show tables in `lambda:taxirdb`.public
 
 /* query to view the trip records */
-select \* from "lambda:taxirdb".public.trips_query
+select * from "lambda:taxirdb".public.trips_query
  ```
 
 >**Note:** If the **Run Query** button is disabled, click Query Editor tab again or refresh the window.

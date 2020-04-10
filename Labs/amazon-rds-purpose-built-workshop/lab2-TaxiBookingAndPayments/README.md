@@ -20,6 +20,10 @@ In this lab, you will simulate taxi trip booking by a rider and acceptance by a 
 
 ![architecture.png](./assets/architecture.png)
 
+## Prerequisites
+
+1. You should have completed [Lab1](https://github.com/aws-samples/aurora-and-database-migration-labs/tree/master/Labs/amazon-rds-purpose-built-workshop/lab1-TaxiDataMigration) from the [github repository.](https://github.com/aws-samples/aurora-and-database-migration-labs/tree/master/Labs/amazon-rds-purpose-built-workshop).
+
 ## Setup the AWS Cloud 9 Environment
 
 ### Install JQ

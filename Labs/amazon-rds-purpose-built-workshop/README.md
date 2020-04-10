@@ -51,11 +51,11 @@ For step-by-step instructions on how to configure SQL-Workbench to connect to Or
 **Lab 3**: In this lab, we will leverage Athena federated query feature (**_in preview_**) to query both DynamoDB and Aurora trip data using a single SQL query. You will also utilize this feature to query DynamoDB and data stored in Amazon S3.
 
 
-|Lab|Name|
-|---|----|
-|Lab 1|[Taxi Data Migration using AWS DMS](./lab1-TaxiDataMigration)|
-|Lab 2|[Taxi Booking, Billing and Payments](./lab2-TaxiBookingAndPayments)|
-|Lab 3|[Query multiple data stores using Athena Federated Query](./lab3-AthenaFederatedQuery)|
+|Lab|Name|Estimated Completion Time|
+|---|----|----|
+|Lab 1|[Taxi Data Migration using AWS DMS](./lab1-TaxiDataMigration)|1 hour|
+|Lab 2|[Taxi Booking, Billing and Payments](./lab2-TaxiBookingAndPayments)|40 minutes|
+|Lab 3|[Query multiple data stores using Athena Federated Query](./lab3-AthenaFederatedQuery)|30 minutes|
 
 
 ## License Summary
