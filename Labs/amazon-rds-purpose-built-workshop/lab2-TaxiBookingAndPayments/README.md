@@ -1,6 +1,7 @@
 # Lab 2: Simulate Taxi Booking, Billing and Payments using Amazon DynamoDB, DynamoDB Streams, AWS Lambda and Amazon Aurora PostgreSQL
 
 * [Overview](#overview)
+* [Prerequisites](#prerequisites)
 * [Setup the AWS Cloud 9 Environment](#setup-the-aws-cloud-9-environment)
   * [Install JQ](#install-jq)
   * [Update SAM CLI](#update-sam-cli)
