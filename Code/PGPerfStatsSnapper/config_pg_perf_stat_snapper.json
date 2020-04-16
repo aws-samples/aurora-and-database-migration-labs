@@ -122,7 +122,7 @@
 			"add_snap_id": 0
 		},
 		{
-			"query": "SELECT d.datname AS Name,  pg_catalog.pg_get_userbyid(d.datdba) AS Owner, CASE WHEN pg_catalog.has_database_privilege(d.datname, 'CONNECT') THEN pg_catalog.pg_size_pretty(pg_catalog.pg_database_size(d.datname)) ELSE 'No Access' END AS SIZE FROM pg_catalog.pg_database d ORDER BY CASE WHEN pg_catalog.has_database_privilege(d.datname, 'CONNECT') THEN pg_catalog.pg_database_size(d.datname) ELSE NULL END DESC LIMIT 20",
+			"query": "SELECT d.datname AS Name,  pg_catalog.pg_get_userbyid(d.datdba) AS Owner, CASE WHEN pg_catalog.has_database_privilege(d.datname, 'CONNECT') THEN pg_catalog.pg_size_pretty(pg_catalog.pg_database_size(d.datname)) ELSE 'No Access' END AS SIZE FROM pg_catalog.pg_database d ORDER BY CASE WHEN pg_catalog.has_database_privilege(d.datname, 'CONNECT') THEN pg_catalog.pg_database_size(d.datname) ELSE NULL END DESC",
 			"filename": "size_database.csv",
 			"ddl_query": "SELECT d.datname AS Name,  pg_catalog.pg_get_userbyid(d.datdba) AS Owner, CASE WHEN pg_catalog.has_database_privilege(d.datname, 'CONNECT') THEN pg_catalog.pg_size_pretty(pg_catalog.pg_database_size(d.datname)) ELSE 'No Access' END AS SIZE FROM pg_catalog.pg_database d where 1=0",
 			"target": "size_database_cust",
@@ -136,18 +136,32 @@
 			"add_snap_id": 0
 		},
 		{
-			"query": "SELECT nspname AS schema_name, relname AS table_name, pg_size_pretty(pg_relation_size(C.oid)) AS table_size, pg_size_pretty(pg_total_relation_size(C.oid)) AS total_size FROM pg_class C LEFT JOIN pg_namespace N ON (N.oid = C.relnamespace) WHERE relkind in ('r','i') and nspname NOT IN ('pg_catalog', 'information_schema') and nspname !~ '^pg_toast' ORDER BY pg_relation_size(C.oid) DESC limit 20",
+			"query": "SELECT c.oid,nspname AS schema_name, relname AS table_name, to_char(c.reltuples,'99999999999999999999') AS row_estimate, pg_size_pretty(pg_total_relation_size(c.oid)) AS total_size, pg_size_pretty(pg_relation_size (c.oid)) AS table_size, pg_size_pretty(pg_indexes_size(c.oid)) AS index_size, pg_size_pretty(pg_total_relation_size(reltoastrelid)) AS toast_size FROM pg_class c LEFT JOIN pg_namespace n ON n.oid = c.relnamespace where nspname NOT IN ('pg_catalog', 'information_schema') and nspname !~ '^pg_toast' and c.relkind in ('r','m') order by pg_total_relation_size(c.oid) DESC",
 			"filename": "size_table_and_index.csv",
-			"ddl_query": "SELECT nspname AS schema_name, relname AS table_name, pg_size_pretty(pg_relation_size(C.oid)) AS table_size, pg_size_pretty(pg_total_relation_size(C.oid)) AS total_size FROM pg_class C LEFT JOIN pg_namespace N ON (N.oid = C.relnamespace) WHERE relkind in ('r','i') and nspname NOT IN ('pg_catalog', 'information_schema') and nspname !~ '^pg_toast' and 1=0",
+			"ddl_query": "SELECT c.oid,nspname AS schema_name, relname AS table_name, to_char(c.reltuples,'99999999999999999999') AS row_estimate, pg_size_pretty(pg_total_relation_size(c.oid)) AS total_size, pg_size_pretty(pg_relation_size (c.oid)) AS table_size, pg_size_pretty(pg_indexes_size(c.oid)) AS index_size, pg_size_pretty(pg_total_relation_size(reltoastrelid)) AS toast_size FROM pg_class c LEFT JOIN pg_namespace n ON n.oid = c.relnamespace where nspname NOT IN ('pg_catalog', 'information_schema') and nspname !~ '^pg_toast' and c.relkind in ('r','m') and 1=0",
 			"target": "size_table_and_index_cust",
 			"add_snap_id": 0
 		},
 		{
-			"query": "SELECT c.oid::regclass as table_name, greatest(age(c.relfrozenxid),age(t.relfrozenxid)) as age, pg_size_pretty(pg_table_size(c.oid)) as table_size FROM pg_class c LEFT JOIN pg_class t ON c.reltoastrelid = t.oid WHERE c.relkind = 'r' ORDER BY 2 DESC LIMIT 20",
+			"query": "SELECT c.oid::regclass as table_name, greatest(age(c.relfrozenxid),age(t.relfrozenxid)) as age, pg_size_pretty(pg_table_size(c.oid)) as table_size FROM pg_class c LEFT JOIN pg_class t ON c.reltoastrelid = t.oid WHERE c.relkind = 'r' ORDER BY 2 DESC",
 			"filename": "aging_tables_for_vacuum.csv",
 			"ddl_query": "SELECT c.oid::regclass as table_name, greatest(age(c.relfrozenxid),age(t.relfrozenxid)) as age, pg_size_pretty(pg_table_size(c.oid)) as table_size FROM pg_class c LEFT JOIN pg_class t ON c.reltoastrelid = t.oid WHERE c.relkind = 'r' and 1=0",
 			"target": "aging_tables_for_vacuum_cust",
 			"add_snap_id": 0
 		}
+	],
+	"DATA_TYPE_REPLACE": [
+		{
+			"source": "regclass",
+			"target": "text"
+		},
+		{
+			"source": "pg_node_tree",
+			"target": "text"
+		},
+		{
+			"source": "aclitem",
+			"target": "text"
+		}	
 	]
 }

@@ -12,33 +12,6 @@ import json
 import os
 import subprocess
 
-# create logger
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-
-# create console handler and set level to ERROR
-ch = logging.StreamHandler()
-ch.setLevel(logging.ERROR)
-
-# create file handler and set level to INFO
-fh = logging.FileHandler(os.path.join(os.path.dirname(__file__),'pg_perf_stat_loader.log'))
-fh.setLevel(logging.INFO)
-
-# create formatter
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-
-# add formatter to ch and fh
-ch.setFormatter(formatter)
-fh.setFormatter(formatter)
-
-# add ch and fh to logger
-logger.addHandler(ch)
-logger.addHandler(fh)
-
-# load all config settings
-with open(os.path.join(os.path.dirname(__file__),'config_pg_perf_stat_snapper.json'), 'r') as f:
-    config = json.load(f)
-
 
 def getoptions():
     parser = argparse.ArgumentParser(
@@ -85,6 +58,8 @@ def getoptions():
     return opts
     
 def get_secret(secret_arn,region_name):
+    
+    logger = logging.getLogger("Loader")
 
     # Create a Secrets Manager client
     session = boto3.session.Session()
@@ -114,6 +89,9 @@ def get_secret(secret_arn,region_name):
         return secret
 
 def runcmd(command):
+    
+    logger = logging.getLogger("Loader")
+    
     #return subprocess.call(command, shell=True)
     try:
         return subprocess.check_call(command, stderr=subprocess.STDOUT, shell=True)
@@ -135,6 +113,39 @@ if __name__ == "__main__":
     REGION_NAME = opts.region
     STAGING_DIR = opts.stagingdir
     
+    # Create Log directory
+    LOG_DIR=os.path.join(os.path.dirname(__file__),'log')
+
+    if not os.path.exists(LOG_DIR):
+        os.makedirs(LOG_DIR)
+    
+    # create logger
+    logger = logging.getLogger("Loader")
+    logger.setLevel(logging.INFO)
+
+    # create console handler and set level to ERROR
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.ERROR)
+
+    # create file handler and set level to INFO
+    fh = logging.FileHandler(os.path.join(LOG_DIR,'pg_perf_stat_loader.log'))
+    fh.setLevel(logging.INFO)
+
+    # create formatter
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+
+    # add formatter to ch and fh
+    ch.setFormatter(formatter)
+    fh.setFormatter(formatter)
+
+    # add ch and fh to logger
+    logger.addHandler(ch)
+    logger.addHandler(fh)
+
+    # load all config settings
+    with open(os.path.join(os.path.dirname(__file__),'config_pg_perf_stat_snapper.json'), 'r') as f:
+        config = json.load(f)
+    
     logger.info('__________________________________________________________________________________________________________________')
     
     if not os.path.exists(STAGING_DIR):
@@ -155,6 +166,7 @@ if __name__ == "__main__":
     
         logger.info('Setting up of Database for importing pgawr table(s) ...')
         runcmd("PGPASSWORD='" + DBPASS + "'" + " /usr/local/pgsql/bin/psql --host=" + DBHOST + " --port=" + DBPORT + " --username=" + DBUSER + " --dbname=" + DBNAME + " --command='" + "CREATE DATABASE " +  ISV_DBNAME + ";'" + " --quiet" + " --echo-errors")
+        logger.info('Database ' + ISV_DBNAME + ' created for importing pgawr table(s) ...')
     
         ddl_file_name = os.path.join(STAGING_DIR,'all_ddls.sql')
     
@@ -169,7 +181,7 @@ if __name__ == "__main__":
     try:
         HOSTPORT=DBHOST + ':' + str(DBPORT)
         my_connection = connect(database=ISV_DBNAME, host=HOSTPORT, user=DBUSER, password=DBPASS, connect_timeout = 30)
-        logger.info('SUCCESS: Connection to PostgreSQL instance succeeded')
+        logger.info('SUCCESS: Connection to PostgreSQL instance ' + HOSTPORT + '/' + ISV_DBNAME + ' succeeded')
         
     except Exception as e:
         logger.error('Exception: ' + str(e))

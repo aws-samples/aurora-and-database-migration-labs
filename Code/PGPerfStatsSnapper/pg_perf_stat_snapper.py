@@ -13,33 +13,6 @@ import os
 import subprocess
 import fileinput
 
-# create logger
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-
-# create console handler and set level to ERROR
-ch = logging.StreamHandler()
-ch.setLevel(logging.ERROR)
-
-# create file handler and set level to INFO
-fh = logging.FileHandler(os.path.join(os.path.dirname(__file__),'pg_perf_stat_snapper.log'))
-fh.setLevel(logging.INFO)
-
-# create formatter
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-
-# add formatter to ch and fh
-ch.setFormatter(formatter)
-fh.setFormatter(formatter)
-
-# add ch and fh to logger
-logger.addHandler(ch)
-logger.addHandler(fh)
-
-# load all config settings
-with open(os.path.join(os.path.dirname(__file__),'config_pg_perf_stat_snapper.json'), 'r') as f:
-    config = json.load(f)
-
 
 def getoptions():
     parser = argparse.ArgumentParser(
@@ -91,6 +64,10 @@ def getoptions():
     return opts
     
 def get_secret(secret_arn,region_name):
+    
+    logger = logging.getLogger("Snapper")
+    
+    #logger.info('Inside get_secret function...')
 
     # Create a Secrets Manager client
     session = boto3.session.Session()
@@ -120,6 +97,11 @@ def get_secret(secret_arn,region_name):
         return secret
 
 def runcmd(command):
+    
+    logger = logging.getLogger("Snapper")
+    
+    #logger.info('Inside runcmd function...')
+    
     #return subprocess.call(command, shell=True)
     try:
         return subprocess.check_call(command, stderr=subprocess.STDOUT, shell=True)
@@ -128,9 +110,8 @@ def runcmd(command):
     
     
 if __name__ == "__main__":
-
     
-    #Parse and Validate Arguments
+    # Parse and Validate Arguments
     opts = getoptions()
 
     # consume arguments 
@@ -143,16 +124,54 @@ if __name__ == "__main__":
     OUTPUT_DIR = opts.outputdir
     MODE = opts.mode
     
-    logger.info('__________________________________________________________________________________________________________________')
+    # Create Log directory
+    LOG_DIR=os.path.join(os.path.dirname(__file__),'log',DBHOST,DBNAME)
+
+    if not os.path.exists(LOG_DIR):
+        os.makedirs(LOG_DIR)
+    
+    # Create Output directory
+    OUTPUT_DIR=os.path.join(OUTPUT_DIR,DBHOST,DBNAME)
     
     if not os.path.exists(OUTPUT_DIR):
         os.makedirs(OUTPUT_DIR)
+        
+    # create logger
+    logger = logging.getLogger("Snapper")
+    logger.setLevel(logging.INFO)
+
+    # create console handler and set level to ERROR
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.ERROR)
+
+    # create file handler and set level to INFO    
+    fh = logging.FileHandler(os.path.join(LOG_DIR,'pg_perf_stat_snapper.log'))
+    fh.setLevel(logging.INFO)
+
+    # create formatter
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+
+    # add formatter to ch and fh
+    ch.setFormatter(formatter)
+    fh.setFormatter(formatter)
+
+    # add ch and fh to logger
+    logger.addHandler(ch)
+    logger.addHandler(fh)
+
+    # load all config settings
+    with open(os.path.join(os.path.dirname(__file__),'config_pg_perf_stat_snapper.json'), 'r') as f:
+        config = json.load(f)
+    
+    
+    logger.info('__________________________________________________________________________________________________________________')
+    
     
     try:
         DBPASS = get_secret(SECRET_ARN,REGION_NAME)
         HOSTPORT=DBHOST + ':' + str(DBPORT)
         my_connection = connect(database=DBNAME, host=HOSTPORT, user=DBUSER, password=DBPASS, connect_timeout = 30)
-        logger.info('SUCCESS: Connection to PostgreSQL instance succeeded')
+        logger.info('SUCCESS: Connection to PostgreSQL instance ' + HOSTPORT + '/' + DBNAME + ' succeeded')
     
     except Exception as e:
         logger.error('Exception: ' + str(e))
@@ -163,6 +182,18 @@ if __name__ == "__main__":
         with my_connection.cursor() as cur:
                 
             if MODE == 'snap':
+                
+                # Create snapper running file to prevent concurrent script runs for same host and database combination
+                RUNNING_FILE=os.path.join(os.path.dirname(__file__),'.snapper_' + DBHOST + '_' + DBNAME + '.running')
+    
+                if os.path.exists(RUNNING_FILE):
+                    
+                    logger.info('+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++')
+                    logger.error("ERROR: Another instance of snapper is already running for the same DBHOST and database. Exiting ... ")
+                    logger.info('+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++')
+                    sys.exit()
+                else:
+                    runcmd("/bin/touch " + RUNNING_FILE)
                 
                 snap_md_fname=os.path.join(OUTPUT_DIR,'pg_awr_snapshots.csv')
                 
@@ -217,6 +248,9 @@ if __name__ == "__main__":
                 
                 logger.info('Finished SNAP with snap_id=' + str(snap_id))
                 
+                # Snapping complete. Remove running file.
+                os.remove(RUNNING_FILE)
+                
             elif MODE == 'package':
                 
                 logger.info('Starting Packaging ...')
@@ -258,7 +292,7 @@ if __name__ == "__main__":
                         f.write("\set QUIET 1\r\n")
                         f.write("\o " + OUTPUT_DIR + "/all_ddls.sql\r\n")
                         
-                #For snapped and packaged tables, generate DDL
+                # For snapped and packaged tables, generate DDL
                 ddl_obj_list=config['SNAP']
                 ddl_query_list=config['PACKAGE']
                 ddl_obj_list.extend(ddl_query_list)
@@ -300,18 +334,30 @@ if __name__ == "__main__":
                 
                 runcmd("PGPASSWORD='" + DBPASS + "'" + " /usr/local/pgsql/bin/psql --host=" + DBHOST + " --port=" + DBPORT + " --username=" + DBUSER + " --dbname=" + DBNAME + " --file=" + ddl_gen_file_name + " --quiet" + " --echo-errors")
                 
+                # delete DDL extraction input file
+                os.remove(ddl_gen_file_name)
                 
                 # Append pg_awr_snapshots DDL to all_ddls.sql
                 with open(os.path.join(OUTPUT_DIR, 'all_ddls.sql'),'a+') as f:
                     f.write("create table pg_awr_snapshots_cust (snap_id bigint,sample_start_time timestamp with time zone,sample_end_time timestamp with time zone);")
                     f.write('\n')
                 
-                #Replace column datatype in the DDL SQL to support data import later using copy command
+                # Replace column datatype in all_ddls.sql to support data import later using copy command
+                
+                # Get all Datatype substitutions that need to be done in all_ddls.sql
+                replace_type_list=config['DATA_TYPE_REPLACE']
+                
                 logger.info('  Doing inplace replace of some column datatypes in the generated DDL ...')
                 
-                for line in fileinput.input(os.path.join(OUTPUT_DIR, 'all_ddls.sql'), inplace=True, backup='.bak'):
-                    print(line.replace('regclass', 'text'), end='')
+                for replace_block in replace_type_list:
+                    
+                    source_type=replace_block["source"]
+                    target_type=replace_block["target"]
                 
+                    #for line in fileinput.input(os.path.join(OUTPUT_DIR, 'all_ddls.sql'), inplace=True, backup='.bak'):
+                    for line in fileinput.input(os.path.join(OUTPUT_DIR, 'all_ddls.sql'), inplace=True):
+                        print(line.replace(source_type, target_type), end='')
+                        
                 logger.info('Packaging Completed Successfully ...')
                 print('Packaging Completed Successfully ...')
                 
