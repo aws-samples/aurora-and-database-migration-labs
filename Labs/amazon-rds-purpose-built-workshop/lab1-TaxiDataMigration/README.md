@@ -1,17 +1,18 @@
 # Lab 1: Migrating Taxi data to Amazon DynamoDB and Amazon Aurora using AWS DMS
 
-* [Overview](#overview)  
-* [High level Architecture](#High-level-architecture)
-* [Preparing the Environment](#Preparing-the-Environment)  
-* [Creating DMS Endpoints for Source and Target databases](#Creating-DMS-Endpoints-for-Source-and-Target-databases)
-    * [Create a Source endpoint for Oracle RDS](#Create-a-Source-endpoint-for-Oracle-RDS)
-    * [Create a Target endpoint for Aurora PostgreSQL](#Create-a-Target-endpoint-for-Aurora-PostgreSQL)
-    * [Create a Target endpoint for Amazon DynamoDB](#Create-a-Target-endpoint-for-Amazon-DynamoDB)
-* [Creating Replication Task for DynamoDB Migration](#Creating-Replication-Task-for-DynamoDB-Migration)  
-    * [Monitoring Replication Task for DynamoDB](#Monitoring-Replication-Task-for-DynamoDB )
-* [Creating Replication Task for Aurora Migration](#Creating-Replication-Task-for-Aurora-Migration) 
-    * [Monitoring Replication Task for DynamoDB](#Monitoring-Replication-Task-for-Aurora )
-* [Final Validation of DMS Tasks](#Final-Validation-of-DMS-Tasks) 
+- [Overview](#overview)
+- [High Level Architecture](#high-level-architecture)
+- [Preparing the Environment](#preparing-the-environment)
+- [Creating Endpoints for Source and Target databases](#creating-endpoints-for-source-and-target-databases)
+  * [Create a Source endpoint for Oracle RDS](#create-a-source-endpoint-for-oracle-rds)
+  * [Create a Target endpoint for Aurora PostgreSQL](#create-a-target-endpoint-for-aurora-postgresql)
+  * [Create a Target endpoint for Amazon DynamoDB](#create-a-target-endpoint-for-amazon-dynamodb)
+- [Creating Replication Task for DynamoDB Migration](#creating-replication-task-for-dynamodb-migration)
+- [Modify Replication Task for DynamoDB](#modify-replication-task-for-dynamodb)
+- [Monitoring Replication Task for DynamoDB](#monitoring-replication-task-for-dynamodb)
+- [Creating Replication Task for Aurora Migration](#creating-replication-task-for-aurora-migration)
+- [Monitoring Replication Task for Aurora PostgreSQL](#monitoring-replication-task-for-aurora-postgresql)
+- [Final Validation of DMS Tasks](#final-validation-of-dms-tasks)
 
 ## Overview
 
@@ -86,7 +87,14 @@ OWNER OBJECT_TYPE  COUNT(*)
 sudo yum install -y postgresql96 postgresql96-contrib postgresql96-devel 
 ```
 
-7. Connect to target Aurora PostgreSQL using psql command as shown below in the Cloud9 terminal. For more options and commands, refer to [psql](https://www.postgresql.org/docs/9.6/app-psql.html) documentation.
+7. Install [JQ](https://stedolan.github.io/jq/) in the Cloud9 environment. We will leverage **JQ** to slice and filter JSON data.
+
+```shell script
+cd ~/environment
+sudo yum -y install jq gettext
+```
+
+8. Connect to target Aurora PostgreSQL using psql command as shown below in the Cloud9 terminal. For more options and commands, refer to [psql](https://www.postgresql.org/docs/9.6/app-psql.html) documentation.
 
 Use the following information to connect to the Aurora PostgreSQL database.
 
@@ -122,7 +130,7 @@ e.g. psql -h xxxxx.us-east-1.rds.amazonaws.com -U auradmin -d taxidb -p 5432
 
 > Note: As you have figured out, there are no tables created in Aurora PostgreSQL yet.
   
-8. Please note that before we migrate data from Oracle RDS to Aurora PostgreSQL, we need to setup a target schema. We recommend to leverage [AWS SCT](https://docs.aws.amazon.com/SchemaConversionTool/latest/userguide/CHAP_Welcome.html) to migrate schema from Oracle to PostgreSQL. However, for this workshop, we have provided a converted schema to use in the target Aurora PostgreSQL environment.  Please execute the following command in the Cloud9 terminal to create the schema.
+9. Please note that before we migrate data from Oracle RDS to Aurora PostgreSQL, we need to setup a target schema. We recommend to leverage [AWS SCT](https://docs.aws.amazon.com/SchemaConversionTool/latest/userguide/CHAP_Welcome.html) to migrate schema from Oracle to PostgreSQL. However, for this workshop, we have provided a converted schema to use in the target Aurora PostgreSQL environment.  Please execute the following command in the Cloud9 terminal to create the schema.
  
 ```shell script
     cd ~/environment/amazon-rds-purpose-built-workshop/
@@ -245,7 +253,7 @@ AWS DMS uses table-mapping rules to map data from the source to the target Dynam
   
 > **_NOTE:_** Typical production migration involves full load followed by continuous data capture CDC. This can be achieved by using choosing option Migrate existing data and replicate ongoing changes. For this lab, we will go with full load only.
 
-4. Click **Start task on create**
+4. Uncheck the option **Start task on create**. We will be modifying the task after it's created to speed up the migration.
 
 ![](./assets/dms-task1-1.png)
 
@@ -324,16 +332,37 @@ AWS DMS uses table-mapping rules to map data from the source to the target Dynam
 
  7. Do not modify anything in the Advanced settings.
 
- 8. Click **Create task**. The task will begin immediately. If not, start the task manually (Select the task, Click Actions and then Start/Restart task).
+ 8. Click **Create task**. Wait for the task status to change from *Creating* to *Ready* in the DMS console.
 
-  
+## Modify Replication Task for DynamoDB
+
+We will modify a few DMS level task settings (`ParallelLoadThreads` and `ParallelLoadBufferSize`) to speed up the migration from Oracle source to DynamoDB target and then manually start the task.
+
+1. Execute the following command in Cloud9 terminal to set the DMS task ARN in a variable.
+
+ ```shell script
+ TASK_ARN=$(aws dms describe-replication-tasks --filters Name=replication-task-id,Values=ora2ddb | jq -r '.ReplicationTasks[].ReplicationTaskArn')
+ ```
+
+2. Modify the DMS task settings by running the following in the Cloud9 terminal.
+
+ ```shell script
+ aws dms modify-replication-task --replication-task-arn $TASK_ARN --replication-task-settings '{"TargetMetadata":{"ParallelLoadThreads": 8,"ParallelLoadBufferSize": 50}}'
+ ```
+
+3. Wait for the task status to change from *Modifying* to *Ready* in the DMS Console.
+
+4. Start the DMS task by selecting it and choosing **Restart/Resume** from the **Actions** Menu.
+
+![](./assets/ddb-start-task.png)
+
 ## Monitoring Replication Task for DynamoDB 
 
-After task is created, monitor the task by looking at the console as shown below. You can also look at the CloudWatch logs for more information.
+After task is started, monitor the task by looking at the console as shown below. You can also look at the CloudWatch logs for more information.
 
 ![](./assets/dms-task1-4.png) 
 
-> **_NOTE:_** This task may take 12 to 15 minutes.  Please proceed to the next step.  After a full load, you will see 128,714 Rows are migrated.
+> **_NOTE:_** This task will take 2 to 3 minutes to complete. After the full load, you will see 128,714 Rows are migrated.
 
 ## Creating Replication Task for Aurora Migration
 

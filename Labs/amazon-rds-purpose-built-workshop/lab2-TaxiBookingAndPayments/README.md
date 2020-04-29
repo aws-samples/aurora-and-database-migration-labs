@@ -1,17 +1,16 @@
 # Lab 2: Simulate Taxi Booking, Billing and Payments using Amazon DynamoDB, DynamoDB Streams, AWS Lambda and Amazon Aurora PostgreSQL
 
-* [Overview](#overview)
-* [Prerequisites](#prerequisites)
-* [Setup the AWS Cloud 9 Environment](#setup-the-aws-cloud-9-environment)
-  * [Install JQ](#install-jq)
+- [Overview](#overview)
+- [Prerequisites](#prerequisites)
+- [Setup the AWS Cloud 9 Environment](#setup-the-aws-cloud-9-environment)
   * [Update SAM CLI](#update-sam-cli)
   * [Install AWS SDK for Python](#install-aws-sdk-for-python)
   * [Save CloudFormation Stack name as a variable](#save-cloudformation-stack-name-as-a-variable)
-* [Enable Amazon DynamoDB Streams](#enable-amazon-dynamodb-streams)
-* [Deploying AWS Lambda Function](#deploying-aws-lambda-function)
+- [Enable Amazon DynamoDB Streams](#enable-amazon-dynamodb-streams)
+- [Deploying AWS Lambda Function](#deploying-aws-lambda-function)
   * [Packaging the PG8000 binaries](#packaging-the-pg8000-binaries)
   * [Deploy AWS Lambda Function and AWS Lambda Layer using AWS SAM template](#deploy-aws-lambda-function-and-aws-lambda-layer-using-aws-sam-template)
-* [Taxi Ride Workflow](#taxi-ride-workflow)
+- [Taxi Ride Workflow](#taxi-ride-workflow)
   * [Taxi Trip Booking Workflow](#taxi-trip-booking-workflow)
   * [Driver Billing and Payments](#driver-billing-and-payments)
  
@@ -27,21 +26,12 @@ In this lab, you will simulate taxi trip booking by a rider and acceptance by a 
 
 ## Setup the AWS Cloud 9 Environment
 
-### Install JQ
+### Update SAM CLI
 
 1. Open the AWS Management Console for [AWS Cloud9](https://us-east-1.console.aws.amazon.com/cloud9/home/account). You will leverage AWS Cloud9 IDE throughout this lab for running scripts, deploying AWS SAM (Serverless Application Model) templates, executing SQL queries etc.
 2. Click on __Open IDE__ for the AWS Cloud9 IDE that was created as part of the Amazon CloudFormation template that was deployed.
 3. Open a terminal window in the  AWS Cloud9 IDE by clicking on __Window__ from the menu bar on the top and select __New Terminal__.
-4. Copy and paste the command below in the terminal window to install [JQ](https://stedolan.github.io/jq/).
-
-```shell script
-cd ~/environment
-sudo yum -y install jq gettext
-```
-
-### Update SAM CLI
-   
-- To update the AWS SAM CLI to the latest version copy paste the following commands in the terminal window in the AWS Cloud9 IDE
+4. Update AWS SAM CLI to the latest version by running the following commands in the Cloud9 terminal window.
    
  ```shell script
 cd ~/environment
