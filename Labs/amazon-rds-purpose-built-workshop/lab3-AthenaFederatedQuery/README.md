@@ -13,9 +13,9 @@
   * [Setting up JDBC connector for Aurora PostgreSQL database](#setting-up-jdbc-connector-for-aurora-postgresql-database)
   * [Setting up catalog for querying Aurora PostgreSQL database](#setting-up-catalog-for-querying-aurora-postgresql-database)
 - [Query multiple data sources using Athena Federated Query](#query-multiple-data-sources-using-athena-federated-query)
-  * [Use Case 1:  Querying data from Amazon DynamoDB and Amazon Aurora](#use-case-1---querying-data-from-amazon-dynamodb-and-amazon-aurora)
-  * [Use Case 2:  Querying data from Amazon DynamoDB and Amazon S3](#use-case-2---querying-data-from-amazon-dynamodb-and-amazon-s3)
-  * [Use Case 3:  Querying data from Amazon DynamoDB and partitioned data in Amazon S3](#use-case-3---querying-data-from-amazon-dynamodb-and-partitioned-data-in-amazon-s3)
+  * [Use Case 1:  Querying data from Amazon DynamoDB and Amazon Aurora](#use-case-1:--querying-data-from-amazon-dynamodb-and-amazon-aurora)
+  * [Use Case 2:  Querying data from Amazon DynamoDB and Amazon S3](#use-case-2:--querying-data-from-amazon-dynamodb-and-amazon-s3)
+  * [Use Case 3:  Querying data from Amazon DynamoDB and partitioned data in Amazon S3](#use-case-3:--querying-data-from-amazon-dynamodb-and-partitioned-data-in-amazon-s3)
 	
 ## Overview
 
