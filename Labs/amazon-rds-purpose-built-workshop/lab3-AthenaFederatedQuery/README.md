@@ -13,9 +13,9 @@
   * [Setting up JDBC connector for Aurora PostgreSQL database](#setting-up-jdbc-connector-for-aurora-postgresql-database)
   * [Setting up catalog for querying Aurora PostgreSQL database](#setting-up-catalog-for-querying-aurora-postgresql-database)
 - [Query multiple data sources using Athena Federated Query](#query-multiple-data-sources-using-athena-federated-query)
-  * [Use Case 1:  Querying data from Amazon DynamoDB and Amazon Aurora](#use-case-1:--querying-data-from-amazon-dynamodb-and-amazon-aurora)
-  * [Use Case 2:  Querying data from Amazon DynamoDB and Amazon S3](#use-case-2:--querying-data-from-amazon-dynamodb-and-amazon-s3)
-  * [Use Case 3:  Querying data from Amazon DynamoDB and partitioned data in Amazon S3](#use-case-3:--querying-data-from-amazon-dynamodb-and-partitioned-data-in-amazon-s3)
+  * [Use Case 1 - Querying data from Amazon DynamoDB and Amazon Aurora](#use-case-1---querying-data-from-amazon-dynamodb-and-amazon-aurora)
+  * [Use Case 2 - Querying data from Amazon DynamoDB and Amazon S3](#use-case-2---querying-data-from-amazon-dynamodb-and-amazon-s3)
+  * [Use Case 3 - Querying data from Amazon DynamoDB and partitioned data in Amazon S3](#use-case-3---querying-data-from-amazon-dynamodb-and-partitioned-data-in-amazon-s3)
 	
 ## Overview
 
@@ -220,7 +220,7 @@ Now, we are ready to query both DynamoDB and Aurora PostgreSQL using Athena fede
 
 ## Query multiple data sources using Athena Federated Query
 
-### Use Case 1:  Querying data from Amazon DynamoDB and Amazon Aurora
+### Use Case 1 - Querying data from Amazon DynamoDB and Amazon Aurora
 
 In this use case, we will validate data accuracy and consistency for the trip record created as part of Lab 2.
 
@@ -268,7 +268,7 @@ ddb.riderid=rdb.rider_email
 and ddb.tripinfo=rdb.trip_info
  ```
 
-### Use Case 2:  Querying data from Amazon DynamoDB and Amazon S3
+### Use Case 2 - Querying data from Amazon DynamoDB and Amazon S3
 
 In this example, we will perform an adhoc analytics to get the trends on total rides,number of rides per vendor, along with the average fair amount for Green taxi rides.  We will use trip data from the [NY taxi public dataset](https://registry.opendata.aws/nyc-tlc-trip-records-pds/) for this illustration.
 
@@ -335,7 +335,7 @@ FROM s3history
 JOIN ddbcurrent ON s3history.vendor = ddbcurrent.vendor_id;
  ```
 
-### Use Case 3:  Querying data from Amazon DynamoDB and partitioned data in Amazon S3
+### Use Case 3 - Querying data from Amazon DynamoDB and partitioned data in Amazon S3
 
 By partitioning your data, you can restrict the amount of data scanned by each query, thus improving performance and reducing cost. Athena leverages Hive for [partitioning](https://cwiki.apache.org/confluence/display/Hive/LanguageManual+DDL#LanguageManualDDL-AlterPartition) data. You can partition your data by any key. A common practice is to partition the data based on time, often leading to a multi-level partitioning scheme. For example, a customer who has data coming in every hour might decide to partition by year, month, date, and hour. Another customer, who has data coming from many different sources but loaded one time per day, may partition by a data source identifier and date.
 
