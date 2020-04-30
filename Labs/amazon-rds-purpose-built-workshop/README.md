@@ -53,7 +53,7 @@ For step-by-step instructions on how to configure SQL-Workbench to connect to Or
 
 |Lab|Name|Estimated Completion Time|
 |---|----|----|
-|Lab 1|[Taxi Data Migration using AWS DMS](./lab1-TaxiDataMigration)|1 hour|
+|Lab 1|[Taxi Data Migration using AWS DMS](./lab1-TaxiDataMigration)|50 minutes|
 |Lab 2|[Taxi Booking, Billing and Payments](./lab2-TaxiBookingAndPayments)|40 minutes|
 |Lab 3|[Query multiple data stores using Athena Federated Query](./lab3-AthenaFederatedQuery)|30 minutes|
 
