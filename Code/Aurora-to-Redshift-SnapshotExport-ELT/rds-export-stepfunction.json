@@ -1,0 +1,184 @@
+{
+  "Comment": "A Retry example of the Amazon States Language using an AWS Lambda Function",
+  "StartAt": "CheckSnapshot",
+  "States": {
+    "CheckSnapshot": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:us-east-1:111111111111:function:rds_snap_exp_check_snapshot",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "SnapshotException"
+          ],
+          "IntervalSeconds": 5,
+          "MaxAttempts": 2,
+          "BackoffRate": 1
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "Next": "SnapshotUnavailable"
+        }
+      ],
+      "ResultPath": "$.snapshot_arn",
+      "Next": "StartExportTask"
+    },
+    "StartExportTask": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:us-east-1:111111111111:function:rds_snap_exp_start_task",
+      "ResultPath": "$.Export_Task_Details",
+      "Next": "CheckExportTask"
+    },
+    "CheckExportTask": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:us-east-1:111111111111:function:rds_snap_exp_check_task_status",
+      "ResultPath": "$.Export_Task_Status",
+      "Next": "Is Task Complete"
+    },
+    "Is Task Complete": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.Export_Task_Status.ExportTasksStatus",
+          "StringEquals": "COMPLETE",
+          "Next": "RDS_Export_OK"
+        }
+      ],
+      "Default": "Wait_1_Minute"
+    },
+    "Wait_1_Minute": {
+      "Type": "Wait",
+      "Seconds": 60,
+      "Next": "CheckExportTask"
+    },
+    "RDS_Export_OK": {
+      "Type": "Pass",
+      "Next": "Run-Glue-Crawler"
+    },
+    "Run-Glue-Crawler": {
+      "Type" : "Task",
+      "Resource": "arn:aws:states:::glue:startJobRun.sync",
+      "Parameters": {
+        "JobName": "rds-snapshot-crawler-start",
+        "Arguments": {
+          "--s3targetpath.$": "$.Export_Task_Status.s3path"
+        }
+      },
+      "Next": "CopyJob-SportingEvent",
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.TaskFailed"
+          ],
+          "Next": "NotifyFailure",
+          "ResultPath": "$.Cause"
+        }
+      ]
+    },
+    "CopyJob-SportingEvent": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::glue:startJobRun.sync",
+      "Parameters": {
+        "JobName": "redshift-query",
+        "Arguments": {
+          "--db": "tpc",
+          "--db_creds": "tpcadmin-redshift",
+          "--bucket": "awspsa-redshift-lab",
+          "--file": "dataeng-lab/sql/sporting_event-staging-copy.sql"
+        }
+      },
+      "Next": "CopyJob-EventTicket",
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.TaskFailed"
+          ],
+          "Next": "NotifyFailure",
+          "ResultPath": "$.Cause"
+        }
+      ]
+    },
+    "CopyJob-EventTicket": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::glue:startJobRun.sync",
+      "Parameters": {
+        "JobName": "redshift-query",
+        "Arguments": {
+          "--db": "tpc",
+          "--db_creds": "tpcadmin-redshift",
+          "--bucket": "awspsa-redshift-lab",
+          "--file": "dataeng-lab/sql/event_ticket-staging-copy.sql"
+        }
+      },
+      "Next": "CopyJob-SportTeam",
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.TaskFailed"
+          ],
+          "Next": "NotifyFailure",
+          "ResultPath": "$.Cause"
+        }
+      ]
+    },
+    "CopyJob-SportTeam": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::glue:startJobRun.sync",
+      "Parameters": {
+        "JobName": "redshift-query",
+        "Arguments": {
+          "--db": "tpc",
+          "--db_creds": "tpcadmin-redshift",
+          "--bucket": "awspsa-redshift-lab",
+          "--file": "dataeng-lab/sql/sport_team-staging-copy.sql"
+        }
+      },
+      "Next": "CopyJob-SportLocation",
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.TaskFailed"
+          ],
+          "Next": "NotifyFailure",
+          "ResultPath": "$.Cause"
+        }
+      ]
+    },
+    "CopyJob-SportLocation": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::glue:startJobRun.sync",
+      "Parameters": {
+        "JobName": "redshift-query",
+        "Arguments": {
+          "--db": "tpc",
+          "--db_creds": "tpcadmin-redshift",
+          "--bucket": "awspsa-redshift-lab",
+          "--file": "dataeng-lab/sql/sport_location-staging-copy.sql"
+        }
+      },
+      "End": true,
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.TaskFailed"
+          ],
+          "Next": "NotifyFailure",
+          "ResultPath": "$.Cause"
+        }
+      ]
+    },
+    "NotifyFailure": {
+      "Type": "Fail",
+      "Error":"Error in table import Glue job.",
+      "Cause": "ELT pipeline failed. Check output of previous steps for troubleshooting."
+    },
+    "SnapshotUnavailable": {
+      "Type": "Fail",
+      "Error":"RDSSnapshotUnavailable.",
+      "Cause": "RDS Snapshot for the rundate doesnt exist."
+  }
+  }
+}

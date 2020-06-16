@@ -1,0 +1,1 @@
+{ "aurora_cluster_id": "auroracluster", "s3_bucket_for_rds_snap_exp": "s3-bucket-name", "iam_role_for_rds_snap_exp": "arn:aws:iam::111111111111:role/iam-role-for-rds-snapshot-export", "kms_key_id_for_rds_snap_exp": "arn:aws:kms:us-east-1:111111111111:key/11111111-aaaa-1111-aaaa-aaaaaaaaaaaaa", "export_list": "database.schema", "run_date":"" }
