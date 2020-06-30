@@ -180,7 +180,9 @@ if __name__ == "__main__":
     
     try:
         with my_connection.cursor() as cur:
-                
+            
+            drop_view_ddl=""
+            
             if MODE == 'snap':
                 
                 # Create snapper running file to prevent concurrent script runs for same host and database combination
@@ -232,6 +234,7 @@ if __name__ == "__main__":
                             f.close()
                     except Exception as e:
                         logger.error('  Error While running query: ' + query_str)
+                        logger.error('  Exception: ' + str(e))
                         f.close()
                         cur.execute("rollback to savepoint sp")
                         continue
@@ -266,6 +269,17 @@ if __name__ == "__main__":
                     
                     logger.info('  Dumping query output to ' + dump_file_name + ' ...')
                     
+                    # If the query is a CTE create a view to get around pygresql limitation of cop_to
+                    drop_view_flag = 0
+                    if query_str.lower().startswith('with'):
+                        
+                        create_view_ddl='CREATE VIEW v_snapper_' + query_block["target"] + ' AS ' + query_str + ";"
+                        drop_view_ddl=drop_view_ddl + 'DROP VIEW v_snapper_' + query_block["target"] + ";"
+                        logger.info('   Creating View v_snapper_' + query_block["target"] + ' ...')
+                        runcmd("PGPASSWORD='" + DBPASS + "'" + " /usr/local/pgsql/bin/psql --host=" + DBHOST + " --port=" + DBPORT + " --username=" + DBUSER + " --dbname=" + DBNAME + " --quiet" + " --echo-errors" + " --command=" + '"' + create_view_ddl + '"')
+                        query_str='SELECT * FROM ' + 'v_snapper_' + query_block["target"]
+                        drop_view_flag = 1
+                    
                     # Dump Data of SQL Queries in configuration file
                     try:
                         with open(dump_file_name, 'w+') as f:
@@ -275,10 +289,11 @@ if __name__ == "__main__":
                             f.close()
                     except Exception as e:
                         logger.error('  Error While running query: ' + query_str)
+                        logger.error('  Exception: ' + str(e))
                         f.close()
                         cur.execute("rollback to savepoint sp")
                         continue
-                
+                    
                 logger.info('  Generating DDL Extraction Input file ...') 
                 
                 ddl_gen_file_name=os.path.join(OUTPUT_DIR,'ddl_gen_input.sql')
@@ -368,6 +383,10 @@ if __name__ == "__main__":
             my_connection.commit()
             cur.close()
             my_connection.close()
-
+            
+            if drop_view_ddl:
+                logger.info('   Dropping temporary Views created by Snapper' + ' ...')
+                runcmd("PGPASSWORD='" + DBPASS + "'" + " /usr/local/pgsql/bin/psql --host=" + DBHOST + " --port=" + DBPORT + " --username=" + DBUSER + " --dbname=" + DBNAME + " --quiet" + " --echo-errors" + " --command=" + '"' + drop_view_ddl + '"')
+                    
     except Exception as e:
         logger.error('Exception: ' + str(e))
