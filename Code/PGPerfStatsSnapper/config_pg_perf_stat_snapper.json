@@ -211,6 +211,10 @@
 		{
 			"source": "aclitem",
 			"target": "text"
-		}	
+		},
+		{
+			"source": "anyarray",
+			"target": "text"
+		}
 	]
 }
