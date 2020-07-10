@@ -12,24 +12,24 @@ order by dbid,userid,queryid,a.snap_id
 ),
 get_lag_data as (
 select sample_start_time,dbid,userid,queryid,snap_id,calls,
-case WHEN (calls-lag(calls::bigint,1,0::bigint) OVER (partition by dbid, userid, queryid ORDER BY snap_id) ) = calls then null
-else (calls-lag(calls::bigint,1,0::bigint) OVER (partition by dbid, userid, queryid ORDER BY snap_id) ) END AS delta_calls,
-case WHEN (total_time-lag(total_time::bigint,1,0::bigint) OVER (partition by dbid, userid, queryid ORDER BY snap_id) ) = total_time then null
-else (total_time-lag(total_time::bigint,1,0::bigint) OVER (partition by dbid, userid, queryid ORDER BY snap_id) ) END as Delta_total_time,
-case WHEN (rows-lag(rows::bigint,1,0::bigint) OVER (partition by dbid, userid, queryid ORDER BY snap_id) ) = rows then null
-else (rows-lag(rows::bigint,1,0::bigint) OVER (partition by dbid, userid, queryid ORDER BY snap_id) ) END as Delta_rows,
-case WHEN (shared_blks_hit-lag(shared_blks_hit::bigint,1,0::bigint) OVER (partition by dbid, userid, queryid ORDER BY snap_id) ) = shared_blks_hit then null
-else (shared_blks_hit-lag(shared_blks_hit::bigint,1,0::bigint) OVER (partition by dbid, userid, queryid ORDER BY snap_id) ) END AS Delta_shared_blks_hit,
-case WHEN (shared_blks_read-lag(shared_blks_read::bigint,1,0::bigint) OVER (partition by dbid, userid, queryid ORDER BY snap_id) ) = shared_blks_read then null
-else (shared_blks_read-lag(shared_blks_read::bigint,1,0::bigint) OVER (partition by dbid, userid, queryid ORDER BY snap_id) ) END AS DELTA_shared_blks_read,
-case WHEN (shared_blks_dirtied-lag(shared_blks_dirtied::bigint,1,0::bigint) OVER (partition by dbid, userid, queryid ORDER BY snap_id) ) = shared_blks_dirtied then null
-else (shared_blks_dirtied-lag(shared_blks_dirtied::bigint,1,0::bigint) OVER (partition by dbid, userid, queryid ORDER BY snap_id) ) END AS DELTA_shared_blks_dirtied,
-case WHEN (shared_blks_written-lag(shared_blks_written::bigint,1,0::bigint) OVER (partition by dbid, userid, queryid ORDER BY snap_id) ) = shared_blks_written then null
-else (shared_blks_written-lag(shared_blks_written::bigint,1,0::bigint) OVER (partition by dbid, userid, queryid ORDER BY snap_id) ) END AS DELTA_shared_blks_written,
-case WHEN (temp_blks_written-lag(temp_blks_written::bigint,1,0::bigint) OVER (partition by dbid, userid, queryid ORDER BY snap_id) ) = temp_blks_written then null
-else (temp_blks_written-lag(temp_blks_written::bigint,1,0::bigint) OVER (partition by dbid, userid, queryid ORDER BY snap_id) ) END AS DELTA_temp_blks_written,
-case WHEN (blk_read_time-lag(blk_read_time::bigint,1,0::bigint) OVER (partition by dbid, userid, queryid ORDER BY snap_id) ) = blk_read_time then null
-else (blk_read_time-lag(blk_read_time::bigint,1,0::bigint) OVER (partition by dbid, userid, queryid ORDER BY snap_id) ) END AS DELTA_blk_read_time
+case WHEN (calls-lag(calls::numeric,1,0::numeric) OVER (partition by dbid, userid, queryid ORDER BY snap_id) ) = calls then null
+else (calls-lag(calls::numeric,1,0::numeric) OVER (partition by dbid, userid, queryid ORDER BY snap_id) ) END AS delta_calls,
+case WHEN (total_time-lag(total_time::numeric,1,0::numeric) OVER (partition by dbid, userid, queryid ORDER BY snap_id) ) = total_time then null
+else (total_time-lag(total_time::numeric,1,0::numeric) OVER (partition by dbid, userid, queryid ORDER BY snap_id) ) END as Delta_total_time,
+case WHEN (rows-lag(rows::numeric,1,0::numeric) OVER (partition by dbid, userid, queryid ORDER BY snap_id) ) = rows then null
+else (rows-lag(rows::numeric,1,0::numeric) OVER (partition by dbid, userid, queryid ORDER BY snap_id) ) END as Delta_rows,
+case WHEN (shared_blks_hit-lag(shared_blks_hit::numeric,1,0::numeric) OVER (partition by dbid, userid, queryid ORDER BY snap_id) ) = shared_blks_hit then null
+else (shared_blks_hit-lag(shared_blks_hit::numeric,1,0::numeric) OVER (partition by dbid, userid, queryid ORDER BY snap_id) ) END AS Delta_shared_blks_hit,
+case WHEN (shared_blks_read-lag(shared_blks_read::numeric,1,0::numeric) OVER (partition by dbid, userid, queryid ORDER BY snap_id) ) = shared_blks_read then null
+else (shared_blks_read-lag(shared_blks_read::numeric,1,0::numeric) OVER (partition by dbid, userid, queryid ORDER BY snap_id) ) END AS DELTA_shared_blks_read,
+case WHEN (shared_blks_dirtied-lag(shared_blks_dirtied::numeric,1,0::numeric) OVER (partition by dbid, userid, queryid ORDER BY snap_id) ) = shared_blks_dirtied then null
+else (shared_blks_dirtied-lag(shared_blks_dirtied::numeric,1,0::numeric) OVER (partition by dbid, userid, queryid ORDER BY snap_id) ) END AS DELTA_shared_blks_dirtied,
+case WHEN (shared_blks_written-lag(shared_blks_written::numeric,1,0::numeric) OVER (partition by dbid, userid, queryid ORDER BY snap_id) ) = shared_blks_written then null
+else (shared_blks_written-lag(shared_blks_written::numeric,1,0::numeric) OVER (partition by dbid, userid, queryid ORDER BY snap_id) ) END AS DELTA_shared_blks_written,
+case WHEN (temp_blks_written-lag(temp_blks_written::numeric,1,0::numeric) OVER (partition by dbid, userid, queryid ORDER BY snap_id) ) = temp_blks_written then null
+else (temp_blks_written-lag(temp_blks_written::numeric,1,0::numeric) OVER (partition by dbid, userid, queryid ORDER BY snap_id) ) END AS DELTA_temp_blks_written,
+case WHEN (blk_read_time-lag(blk_read_time::numeric,1,0::numeric) OVER (partition by dbid, userid, queryid ORDER BY snap_id) ) = blk_read_time then null
+else (blk_read_time-lag(blk_read_time::numeric,1,0::numeric) OVER (partition by dbid, userid, queryid ORDER BY snap_id) ) END AS DELTA_blk_read_time
 from get_sql_id
 where  snap_id between :begin_snap_id-1 and :end_snap_id
 )
