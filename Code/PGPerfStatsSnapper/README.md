@@ -6,6 +6,8 @@ RDS Enhanced Monitoring and RDS Performance Insights collect a lot of database p
 The snapper script provided here enables periodic collection (snapping) of PostgreSQL performance related statistics and metrics. The config file used by the script can be customized to add and remove database dictionary views and queries to be snapped as required.
 The snapper script collects and stores the PostgreSQL database metrics in separate OS level files to have minimal impact on the database. These files can be loaded into another PostgreSQL instance by the loader script for post analysis.
 
+You must accept all the risks associated with production use of the Snapper tool in regards to unknown/undesirable consequences. If you do not assume all the associated risk, you are not authorized to use these scripts.
+
 ## Prerequisites
 
 1. Add **pg_stat_statements** to [shared_preload_libraries](https://www.postgresql.org/docs/11/runtime-config-client.html) DB parameter and create required extensions by running the following in the PostgreSQL database where application related objects are stored. 
@@ -155,6 +157,227 @@ aws s3 cp pg-snapper-output.zip s3://pg-snapper-output/
 aws s3 presign s3://pg-snapper-output/pg-snapper-output.zip --expires-in 604800
 ```
 3. Share the S3 URL for loading the output and do further analysis.
+
+# PostgreSQL Performance Stats Loader
+
+To analyze the metrics collected by Snapper, follow the steps below.
+
+> **_NOTE:_** You can use the same EC2 instance used for running snapper for running Loader Script as well.
+
+## Prerequisites
+
+1. Store database master credential of the PostgreSQL instance where the snapper output will be loaded in [AWS secret manager](https://docs.aws.amazon.com/secretsmanager/latest/userguide/manage_create-basic-secret.html) and note down the secret ARN. This needs to be provided as a parameter to the loader script to retrieve database credential for logging into the PostgreSQL instance.
+
+2.  Create an [IAM role for EC2](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-roles-for-amazon-ec2.html#create-iam-role) Service with an inline policy similar to the following. This enables the EC2 instance (which is used to run the loader script) to retrieve AWS Secrets Manager stored secrets.
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+        "Effect": "Allow",
+        "Action": "secretsmanager:GetSecretValue",
+        "Resource": "*"
+        }
+    ]
+}
+```
+
+## Setup
+
+1. [Launch an EC2 instance](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/launching-instance.html) where the loader script will be executed.
+
+    1. Use "Amazon Linux AMI 2018.03.0 (HVM), SSD Volume Type" AMI.
+    1. Use r4.8xlarge instance type.
+    1. Use same VPC and subnet/AZ as the RDS/Aurora PostgreSQL Instance
+    1. Add the IAM role to the EC2 instance which was created in the prerequisite step.
+    1. Allocate 30 GB of General Purpose SSD (gp2) storage to the Root volume.
+    1. Add the EC2 instance to the same security group as the RDS/Aurora instance or add it to a new security group (and later add the new security group to inbound rule of the RDS/Aurora security group).
+    1. Make sure to download and save the key pair.
+
+2. Add appropriate [inbound rules](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/authorizing-access-to-an-instance.html) to the security group used the previous step to allow your workstation to be able to SSH to the EC2 instance.
+
+3. Optional. If you created a new security group while launching EC2, make sure to add that security group to inbound rule of the RDS/Aurora security group for the EC2 instance to be able to communicate with the PostgreSQL instance.
+
+4. Install PostgreSQL client on the EC2 instance
+
+```bash
+sudo yum -y update
+sudo yum -y group install "Development Tools"
+sudo yum -y install readline-devel
+sudo yum -y install openssl-devel
+mkdir ~/postgresql
+cd ~/postgresql
+curl https://ftp.postgresql.org/pub/source/v11.3/postgresql-11.3.tar.gz -o postgresql-11.3.tar.gz
+tar -xvf postgresql-11.3.tar.gz
+cd postgresql-11.3
+sudo ./configure --with-openssl
+sudo make -C src/bin install
+sudo make -C src/include install
+sudo make -C src/interfaces install
+sudo make -C doc install
+sudo /sbin/ldconfig /usr/local/pgsql/lib
+```
+5.  Install Python dependencies
+
+```bash
+sudo su -
+PATH=/usr/local/pgsql/bin:$PATH
+export PATH
+pip install boto3
+pip install PyGreSQL
+exit
+```
+
+6. Download the loader Python script along with the config file from [github](https://github.com/aws-samples/aurora-and-database-migration-labs/tree/master/Code/PGPerfStatsSnapper) and stage it in a directory. We will be using /home/ec2-user/scripts as the staging directory in the below steps.
+
+```bash
+mkdir -p /home/ec2-user/scripts
+cd /home/ec2-user/scripts
+curl -L https://raw.githubusercontent.com/aws-samples/aurora-and-database-migration-labs/master/Code/PGPerfStatsSnapper/pg_perf_stat_loader.py -o pg_perf_stat_loader.py
+curl -L https://raw.githubusercontent.com/aws-samples/aurora-and-database-migration-labs/master/Code/PGPerfStatsSnapper/config_pg_perf_stat_snapper.json -o config_pg_perf_stat_snapper.json
+chmod 755 pg_perf_stat_loader.py
+```
+
+Script Usage:
+
+```bash
+[ec2-user@ip-172-31-6-131 scripts]$ /home/ec2-user/scripts/pg_perf_stat_loader.py -h
+usage: pg_perf_stat_loader.py [-h] -e ENDPOINT -P PORT [-d DBNAME] -u USER -s
+                              SECRETARN -o STAGINGDIR -r REGION
+
+Snap PostgreSQL performance statistics and exit
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -e ENDPOINT, --endpoint ENDPOINT
+                        PostgreSQL Instance Endpoint (default: None)
+  -P PORT, --port PORT  Port (default: None)
+  -d DBNAME, --dbname DBNAME
+                        Database Name (default: postgres)
+  -u USER, --user USER  Database UserName (default: None)
+  -s SECRETARN, --SecretARN SECRETARN
+                        AWS Secrets Manager stored Secret ARN (default: None)
+  -o STAGINGDIR, --stagingdir STAGINGDIR
+                        Directory containing the snapper generated csv files
+                        (default: None)
+  -r REGION, --region REGION
+                        AWS region (default: None)
+```
+
+## Import Snapper Output
+
+1. Download the snapper outputs from the provided pre-signed S3 URL.
+
+```bash
+cd /home/ec2-user/scripts
+curl "<S3 pre-signed URL>" -o snapper-output.zip
+unzip snapper-output.zip
+```
+
+2. Import the snapper output by running the following:
+
+```bash
+/home/ec2-user/scripts/pg_perf_stat_loader.py -e <PostgreSQL Instance EndPoint> -P <Port> -d postgres -u <Master UserName> -s <AWS Secretes Manager ARN> -o <Staged snapper output directory> -r <AWS Region>
+```
+
+For e.g.
+
+```bash
+/home/ec2-user/scripts/pg_perf_stat_loader.py -e aurorapg.cluster-xxxxxxxxxxx.us-east-1.rds.amazonaws.com -P 5432 -d postgres -u masteruser -s arn:aws:secretsmanager:us-east-1:111111111111:secret:masteruser_secret-XbRXX -o /home/ec2-user/scripts/output/pgloadinst.cluster-xxxxxxxxxxxx.us-east-1.rds.amazonaws.com/postgres -r us-east-1
+```
+
+# Sample queries for Snapper Data Analysis
+
+Sample queries for snapper data analysis is available in [Github](https://github.com/aws-samples/aurora-and-database-migration-labs/tree/master/Code/PGPerfStatsSnapper/SQLs).
+
+## Download SQL files for analysis
+Download the SQLs to a machine where PSQL is installed and which has access to the PostgreSQL instance where snapper data was uploaded.
+
+```bash
+cd /home/ec2-user/scripts
+svn checkout "https://github.com/aws-samples/aurora-and-database-migration-labs/trunk/Code/PGPerfStatsSnapper/SQLs"
+```
+
+## Run SQLs for analysis
+
+```bash
+cd /home/ec2-user/scripts/SQLs
+
+psql --host=<endpoint> --port=<port> --username=<username> --dbname=postgres --password
+
+\l+
+
+\c <database where snapper data is stored>
+
+
+postgres=> \i snappermenu.sql
+Pager usage is off.
+
+==SNAPSHOT DETAILS==
+
+list_snaps.sql                                          List snapshots available with time window
+
+==SET SNAPSHOT WINDOW==
+
+set_snaps.sql                                           Set Begin and End Snapshot ID for Analysis
+
+==INSTANCE AND DATABASE STATS==
+
+db_and_schema_sizes.sql                                 Database and Schema Sizes
+top_20_tables_and_indexes_by_tot_size.sql               Top 20 Tables and Indexes by total Size
+cache_hit_ratio.sql                                     Cache hit ratio in a time window
+db_stats.sql                                            Database Level statistics in a time window
+
+==SESSION STATS==
+
+session_cnt.sql                                         Total Sessions and Session count by state in a time window
+session_activity_hist.sql                               Sessions activity with wait events in a time window
+blockers_and_waiters_hist.sql                           Blocking and Waiting Sessions in a time window
+vacuum_history.sql                                      Vacuum activity in a time window
+
+==SQL STATS==
+
+top_20_sqls_by_calls.sql                                Top 20 queries by Executions/Calls in a time window
+top_20_sqls_by_elapsed_time.sql                         Top 20 queries by Elapsed time in a time window
+top_10_sqls_by_cpu_by_snap_id.sql                       Top 10 SQL queries by CPU by Snap ID
+sql_stat_history.sql                                    Execution trend of a query of interest in a time window
+
+==TABLE STATS==
+
+table_cols.sql                                          Details of Table columns
+table_pk.sql                                            Details of Table Primary Key
+table_fks.sql                                           Details of Foreign Keys referencing the Primary Key of the Parent Table
+top_20_tables_by_seq_scans.sql                          Top 20 Tables by number of Sequential or Full scans
+top_20_tables_by_dmls.sql                               Top 20 Tables by DML activity
+table_bloat.sql                                         Table Bloat Analysis
+
+==INDEX STATS==
+
+indexes_on_table.sql                                    Indexes on a table
+fks_with_no_index.sql                                   Foreign Keys with no Index
+needed_indexes.sql                                      Needed Indexes
+top_20_indexes_by_scans.sql                             Top 20 Indexes by number of Scans initiated in the index
+top_20_indexes_by_avg_tuple_reads.sql                   TOP 20 Indexes by average Tuples Reads/Scan
+unused_indexes.sql                                      Unused Indexes
+index_bloat.sql                                         Index Bloat Analysis
+
+postgres=>
+```
+
+Set Begin and End Snapshot ID for Analysis before running the analysis queries:
+
+```bash
+=> \i list_snaps.sql
+=> \i set_snaps.sql
+```
+
+# Jupyter notebook for further exploration of snapper collected data
+
+A sample Jupyter notebook to analyze and plot graphs using snapper collected data is available in [Github](https://github.com/aws-samples/aurora-and-database-migration-labs/tree/master/Code/PGPerfStatsSnapper/Juypter).
+
+You can spin up a notebook instance using Amazon Sagemaker and import the sample .ipynb file to run the notebook and do further analysis.
+
 
 ## License Summary
 
