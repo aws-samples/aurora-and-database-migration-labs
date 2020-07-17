@@ -6,7 +6,7 @@ RDS Enhanced Monitoring and RDS Performance Insights collect a lot of database p
 The snapper script provided here enables periodic collection (snapping) of PostgreSQL performance related statistics and metrics. The config file used by the script can be customized to add and remove database dictionary views and queries to be snapped as required.
 The snapper script collects and stores the PostgreSQL database metrics in separate OS level files to have minimal impact on the database. These files can be loaded into another PostgreSQL instance by the loader script for post analysis.
 
-:warning: You must accept all the risks associated with production use of the Snapper tool in regards to unknown/undesirable consequences. If you do not assume all the associated risk, you are not authorized to use these scripts.
+:warning: You must accept all the risks associated with production use of the **Snapper** tool in regards to unknown/undesirable consequences. If you do not assume all the associated risk, you shouldn't be using this tool.
 
 ## Prerequisites
 
