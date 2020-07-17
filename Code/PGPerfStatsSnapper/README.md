@@ -162,7 +162,7 @@ aws s3 presign s3://pg-snapper-output/pg-snapper-output.zip --expires-in 604800
 
 To analyze the metrics collected by Snapper, follow the steps below.
 
-> **_NOTE:_** You can use the same EC2 instance used for running snapper for running Loader Script as well.
+> **_NOTE:_** You can use the same EC2 instance for running Snapper and Loader Scripts.
 
 ## Prerequisites
 
