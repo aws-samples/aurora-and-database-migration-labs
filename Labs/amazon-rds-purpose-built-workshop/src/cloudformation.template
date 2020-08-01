@@ -175,20 +175,20 @@
 
             "OracleEngineVersion" :
         {
-          "us-east-1"  : {"ver" : "12.1.0.2.v16"},
-          "us-west-2" : {"ver" : "12.1.0.2.v16"}
+          "us-east-1"  : {"ver" : "19.0.0.0.ru-2020-04.rur-2020-04.r1"},
+          "us-west-2" : {"ver" : "19.0.0.0.ru-2020-04.rur-2020-04.r1"}
         },
 		 		 
           "OracleSnapshotId" :
       {
-        "us-east-1"  : {"snapid" : "arn:aws:rds:us-east-1:973833070108:snapshot:aws-workshop-oracle-taxidata-samplev2"},
-		"us-west-2"  : {"snapid" : "arn:aws:rds:us-west-2:973833070108:snapshot:aws-workshop-oracle-taxidata-samplev2"}
+        "us-east-1"  : {"snapid" : "arn:aws:rds:us-east-1:973833070108:snapshot:aws-db-workshop-oracle-19c-taxidata-samplev1"},
+		"us-west-2"  : {"snapid" : "arn:aws:rds:us-west-2:973833070108:snapshot:aws-db-workshop-oracle-19c-taxidata-samplev1"}
        },
 		 
 		 "AuroraMap": {
 
 			"aurora-postgresql": {
-				"AuroraEngineVersion": "11.4",
+				"AuroraEngineVersion": "11.7",
 				"AuroraPort": "5432",
 				"AuroraParameterGroupName": "default.aurora-postgresql11",
 				"AuroraPGFamily": "aurora-postgresql11"
@@ -547,8 +547,7 @@
                 },
                 "SubnetId": {
                     "Ref": "DBSubnet1"
-                },
-               "OwnerArn": { "Fn::Sub" : "arn:aws:sts::${AWS::AccountId}:assumed-role/TeamRole/MasterKey" }	
+                }
             }
         },
     "myDynamoDBTable" : {
@@ -643,8 +642,8 @@
           }
         }
      },
-     
-	"DMSIAMRole2": {
+
+    "DMSIAMRole2": {
         "Type": "AWS::IAM::Role",
         "Condition" : "NotExistsDMSVPCRole",
         "Properties": {
@@ -682,7 +681,7 @@
       "Properties": {
        "AllocatedStorage": 100,
        "PubliclyAccessible": "false",
-	   "EngineVersion": "3.3.1",
+	   "EngineVersion": "3.4.0",
        "ReplicationInstanceClass": { "Ref" : "DMSInstanceType" },
        "ReplicationSubnetGroupIdentifier": { "Ref" : "MyDMSReplicationSubnetGroup" },
        "Tags" : [ {"Key" : "Application", "Value" : { "Ref" : "AWS::StackId"} } ]
@@ -739,7 +738,7 @@
 	"OracleDBMasterUser":{ "Value" :{ "Fn::Select" : [ "0", [ "dbadmin", "auradmin"] ] }},
 	
 	"OracleRDSDetails": {
-      "Description" : "Oracle RDS Cluster DNS:port:DBName",
+      "Description" : "Oracle RDS DNS:port:DBName",
       "Value" : { "Fn::Join": [ "", [ { "Fn::GetAtt": [ "OracleDB", "Endpoint.Address" ] },
                                       ":",
                                       { "Fn::GetAtt": [ "OracleDB", "Endpoint.Port" ] },
