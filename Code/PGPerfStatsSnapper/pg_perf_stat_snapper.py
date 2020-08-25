@@ -183,6 +183,9 @@ if __name__ == "__main__":
             
             drop_view_ddl=""
             
+            # Set client_encoding to UTF-8, this prevents possible character encoding errors
+            cur.execute("SET client_encoding=utf8")
+            
             if MODE == 'snap':
                 
                 # Create snapper running file to prevent concurrent script runs for same host and database combination
