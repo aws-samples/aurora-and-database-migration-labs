@@ -28,4 +28,4 @@ from
        cl.oid = con.confrelid
    join pg_attribute_cust att2 on
        att2.attrelid = con.conrelid and att2.attnum = con.parent
-   where cl.relname like :'parent_tab_name'; 
+   where cl.relname=lower(:'parent_tab_name'); 

@@ -5,5 +5,5 @@ FROM   pg_index_cust i
 JOIN   pg_attribute_cust a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
 JOIN   pg_class_cust c on a.attrelid = c.oid
 JOIN   pg_namespace_cust n on c.relnamespace = n.oid
-WHERE  c.relname = :'tabname'
+WHERE  c.relname = lower(:'tabname')
 AND    i.indisprimary;

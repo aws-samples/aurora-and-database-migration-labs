@@ -76,6 +76,13 @@
 			"ddl_query": "select * from aurora_log_report(1) where 1=0",
 			"target": "aurora_log_report_history",
 			"add_snap_id": 1	
+		},
+		{
+			"query": "select nspname,relname,pg_catalog.pg_get_userbyid(relowner) as RelOwner from pg_class a LEFT JOIN pg_namespace b ON a.relnamespace=b.oid WHERE  relkind IN ('r','s') and (nspname !~ '^pg_toast' and nspname like 'pg_temp%') and relname not in ('tmpwritestart','tmpwriteend','resulttab')",
+			"filename": "pg_temp_table_history.csv",
+			"ddl_query": "select nspname,relname,pg_catalog.pg_get_userbyid(relowner) as RelOwner from pg_class a LEFT JOIN pg_namespace b ON a.relnamespace=b.oid WHERE  relkind IN ('r','s') and (nspname !~ '^pg_toast' and nspname like 'pg_temp%') and relname not in ('tmpwritestart','tmpwriteend','resulttab') and 1=0",
+			"target": "pg_temp_table_history",
+			"add_snap_id": 1
 		}
   ],
   "PACKAGE": [

@@ -19,9 +19,11 @@
 \qecho '==INSTANCE AND DATABASE STATS=='
 \qecho ' '
 \qecho 'db_and_schema_sizes.sql                 		Database and Schema Sizes'
-\qecho 'top_20_tables_and_indexes_by_tot_size.sql   		Top 20 Tables and Indexes by total Size'
+\qecho 'tables_and_indexes_tot_size.sql   		        Top 20 Tables and Indexes by total Size'
 \qecho 'cache_hit_ratio.sql                 			Cache hit ratio in a time window'
 \qecho 'db_stats.sql                         			Database Level statistics in a time window'
+\qecho 'temp_file_by_snap_id.sql                                Temp file stats by Snap ID'
+\qecho 'temp_table_cnt_by_snap_id.sql                           Temp tables count by Snap ID'
 \qecho ' '
 \qecho ' '
 
@@ -51,6 +53,7 @@
 \qecho 'top_20_tables_by_seq_scans.sql      			Top 20 Tables by number of Sequential or Full scans'
 \qecho 'top_20_tables_by_dmls.sql           			Top 20 Tables by DML activity'
 \qecho 'table_bloat.sql           				Table Bloat Analysis'
+\qecho 'sqls_touching_table.sql                                 List SQLs touching a table'
 \qecho ' '
 \qecho ' '
 

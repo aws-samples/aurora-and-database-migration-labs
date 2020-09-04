@@ -16,4 +16,4 @@ AND NOT a.attisdropped
 AND a.attrelid = (
 SELECT c.oid
 FROM pg_class_cust c LEFT JOIN pg_namespace_cust n ON n.oid = c.relnamespace
-WHERE c.relname=:'tabname');
+WHERE c.relname=lower(:'tabname'));
