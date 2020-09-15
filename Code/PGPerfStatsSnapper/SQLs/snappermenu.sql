@@ -65,6 +65,7 @@
 \qecho 'top_20_indexes_by_scans.sql         			Top 20 Indexes by number of Scans initiated in the index'
 \qecho 'top_20_indexes_by_avg_tuple_reads.sql       		TOP 20 Indexes by average Tuples Reads/Scan'
 \qecho 'unused_indexes.sql                  			Unused Indexes'
+\qecho 'duplicate_indexes.sql                                   Duplicate Indexes'
 \qecho 'index_bloat.sql                  			Index Bloat Analysis'
 \qecho ' '
 \qecho ' '
