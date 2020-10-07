@@ -75,9 +75,9 @@ sudo yum -y install readline-devel
 sudo yum -y install openssl-devel
 mkdir ~/postgresql
 cd ~/postgresql
-curl https://ftp.postgresql.org/pub/source/v11.3/postgresql-11.3.tar.gz -o postgresql-11.3.tar.gz
-tar -xvf postgresql-11.3.tar.gz
-cd postgresql-11.3
+curl https://ftp.postgresql.org/pub/source/v12.3/postgresql-12.3.tar.gz -o postgresql-12.3.tar.gz
+tar -xvf postgresql-12.3.tar.gz
+cd postgresql-12.3
 sudo ./configure --with-openssl
 sudo make -C src/bin install
 sudo make -C src/include install
@@ -149,10 +149,11 @@ optional arguments:
 ```bash
 /home/ec2-user/scripts/pg_perf_stat_snapper.py -e <PostgreSQL Instance EndPoint> -P <Port> -d <Database Name where Application objects are stored> -u <Master UserName> -s <AWS Secretes Manager ARN> -m package [-o <output directory>] -r <AWS Region>
 ```
-2. Zip the output directory, upload to the S3 bucket created in the prerequisite section and create a pre-signed URL of the zip file. In the example below ```s3://pg-snapper-output/``` is the bucket used for uploading the zip file.
+2. Zip the output and log directory, upload to the S3 bucket created in the prerequisite section and create a pre-signed URL of the zip file. In the example below ```s3://pg-snapper-output/``` is the bucket used for uploading the zip file.
 ```bash
 cd /home/ec2-user/scripts
 zip -r pg-snapper-output output
+zip -r pg-snapper-output log
 aws s3 cp pg-snapper-output.zip s3://pg-snapper-output/
 aws s3 presign s3://pg-snapper-output/pg-snapper-output.zip --expires-in 604800
 ```

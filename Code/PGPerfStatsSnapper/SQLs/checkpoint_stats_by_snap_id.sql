@@ -22,4 +22,5 @@ else (buffers_backend-lag(buffers_backend::numeric,1,0::numeric) OVER (ORDER BY 
 case WHEN (buffers_alloc-lag(buffers_alloc::numeric,1,0::numeric) OVER (ORDER BY a.snap_id) ) = buffers_alloc then null
 else (buffers_alloc-lag(buffers_alloc::numeric,1,0::numeric) OVER (ORDER BY a.snap_id) ) END AS delta_new_buffers_alloc
 from pg_stat_bgwriter_history a,  pg_awr_snapshots_cust b
-where a.snap_id = b.snap_id;
+where a.snap_id = b.snap_id
+and a.snap_id between :begin_snap_id and :end_snap_id;

@@ -164,14 +164,14 @@ if __name__ == "__main__":
     try:
         ISV_DBNAME = raw_input("Enter Database name to be created for importing PostgreSQL performance statistics:")
     
-        logger.info('Setting up of Database for importing pgawr table(s) ...')
-        runcmd("PGPASSWORD='" + DBPASS + "'" + " /usr/local/pgsql/bin/psql --host=" + DBHOST + " --port=" + DBPORT + " --username=" + DBUSER + " --dbname=" + DBNAME + " --command='" + "CREATE DATABASE " +  ISV_DBNAME + ";'" + " --quiet" + " --echo-errors")
+        logger.info('Setting up Database for importing pgawr table(s) ...')
+        runcmd("PGPASSWORD='" + DBPASS + "'" + " /usr/local/pgsql/bin/psql --host=" + DBHOST + " --port=" + DBPORT + " --username=" + DBUSER + " --dbname=" + DBNAME + " --command='" + "CREATE DATABASE " +  ISV_DBNAME + ";'" + " --quiet" + " --echo-errors" + " 2>>" + os.path.join(LOG_DIR,'pg_perf_stat_loader.log'))
         logger.info('Database ' + ISV_DBNAME + ' created for importing pgawr table(s) ...')
     
         ddl_file_name = os.path.join(STAGING_DIR,'all_ddls.sql')
     
         logger.info('Creating pgawr related table(s) ...')
-        runcmd("PGPASSWORD='" + DBPASS + "'" + " /usr/local/pgsql/bin/psql --host=" + DBHOST + " --port=" + DBPORT + " --username=" + DBUSER + " --dbname=" + ISV_DBNAME + " --file=" + ddl_file_name + " --quiet" + " --echo-errors")
+        runcmd("PGPASSWORD='" + DBPASS + "'" + " /usr/local/pgsql/bin/psql --host=" + DBHOST + " --port=" + DBPORT + " --username=" + DBUSER + " --dbname=" + ISV_DBNAME + " --file=" + ddl_file_name + " --quiet" + " --echo-errors" + " 2>>" + os.path.join(LOG_DIR,'pg_perf_stat_loader.log'))
         
     except Exception as e:
         logger.error('Exception: ' + str(e))

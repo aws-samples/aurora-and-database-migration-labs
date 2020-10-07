@@ -186,6 +186,21 @@ if __name__ == "__main__":
             # Set client_encoding to UTF-8, this prevents possible character encoding errors
             cur.execute("SET client_encoding=utf8")
             
+            # Get PostgreSQL major version number
+            cur.execute("SHOW server_version")
+            pg_ver=int(cur.fetchone()[0].split(".", 1)[0])
+            
+           
+            try:
+                cur.execute("savepoint sp")
+                cur.execute("SELECT AURORA_VERSION()")
+                is_aurora=True
+                
+            except Exception as e:    
+                is_aurora=False
+                cur.execute("rollback to savepoint sp")
+           
+            
             if MODE == 'snap':
                 
                 # Create snapper running file to prevent concurrent script runs for same host and database combination
@@ -225,6 +240,10 @@ if __name__ == "__main__":
                     # Prefix query result with Snap ID
                     query_str=query_block["query"].replace('select','select ' + str(snap_id) + ',')
                     dump_file_name=os.path.join(OUTPUT_DIR,query_block["filename"])
+                    
+                    # For RDS PG, skip aurora_log_report snapping
+                    if not is_aurora and "aurora_log_report" in query_str:
+                        continue
                     
                     logger.info('  Dumping query output to ' + dump_file_name + ' ...')
                     
@@ -272,16 +291,19 @@ if __name__ == "__main__":
                     
                     logger.info('  Dumping query output to ' + dump_file_name + ' ...')
                     
-                    # If the query is a CTE create a view to get around pygresql limitation of cop_to
-                    drop_view_flag = 0
+                    # If the query is a CTE, create a view to get around pygresql limitation for copy_to
                     if query_str.lower().startswith('with'):
                         
                         create_view_ddl='CREATE VIEW v_snapper_' + query_block["target"] + ' AS ' + query_str + ";"
                         drop_view_ddl=drop_view_ddl + 'DROP VIEW v_snapper_' + query_block["target"] + ";"
                         logger.info('   Creating View v_snapper_' + query_block["target"] + ' ...')
-                        runcmd("PGPASSWORD='" + DBPASS + "'" + " /usr/local/pgsql/bin/psql --host=" + DBHOST + " --port=" + DBPORT + " --username=" + DBUSER + " --dbname=" + DBNAME + " --quiet" + " --echo-errors" + " --command=" + '"' + create_view_ddl + '"')
+                        runcmd("PGPASSWORD='" + DBPASS + "'" + " /usr/local/pgsql/bin/psql --host=" + DBHOST + " --port=" + DBPORT + " --username=" + DBUSER + " --dbname=" + DBNAME + " --quiet" + " --echo-errors" + " --command=" + '"' + create_view_ddl + '"' + " 2>>" + os.path.join(LOG_DIR,'pg_perf_stat_snapper.log'))
                         query_str='SELECT * FROM ' + 'v_snapper_' + query_block["target"]
-                        drop_view_flag = 1
+                    
+                    # If PG version >= 12 then oid is already included as a visible column for pg_class and pg_namespace
+                    if pg_ver >= 12:
+                        query_str = query_str.replace("select oid,","select ",1)
+                    
                     
                     # Dump Data of SQL Queries in configuration file
                     try:
@@ -336,6 +358,14 @@ if __name__ == "__main__":
                         target_obj_name=obj_block["target"]
                         add_snap_id=obj_block["add_snap_id"]
                         
+                        # For RDS PG, skip aurora_log_report DDL generation
+                        if not is_aurora and "aurora_log_report" in query_str:
+                            continue
+                        
+                        # If PG version >= 12 then oid is already included as a visible column for pg_class and pg_namespace
+                        if pg_ver >= 12:
+                            query_str = query_str.replace("select oid,","select ", 1)
+                        
                         with open(ddl_gen_file_name, 'a+') as f:
                             f.write("create temp table " + target_obj_name + " as " + query_str + ";" + "\r\n")
                         
@@ -350,7 +380,7 @@ if __name__ == "__main__":
                 # Extract DDL using the DDL generation input file 
                 logger.info('  Extracting all DDLs ...')
                 
-                runcmd("PGPASSWORD='" + DBPASS + "'" + " /usr/local/pgsql/bin/psql --host=" + DBHOST + " --port=" + DBPORT + " --username=" + DBUSER + " --dbname=" + DBNAME + " --file=" + ddl_gen_file_name + " --quiet" + " --echo-errors")
+                runcmd("PGPASSWORD='" + DBPASS + "'" + " /usr/local/pgsql/bin/psql --host=" + DBHOST + " --port=" + DBPORT + " --username=" + DBUSER + " --dbname=" + DBNAME + " --file=" + ddl_gen_file_name + " --quiet" + " --echo-errors" + " 2>>" + os.path.join(LOG_DIR,'pg_perf_stat_snapper.log'))
                 
                 # delete DDL extraction input file
                 os.remove(ddl_gen_file_name)
@@ -389,7 +419,7 @@ if __name__ == "__main__":
             
             if drop_view_ddl:
                 logger.info('   Dropping temporary Views created by Snapper' + ' ...')
-                runcmd("PGPASSWORD='" + DBPASS + "'" + " /usr/local/pgsql/bin/psql --host=" + DBHOST + " --port=" + DBPORT + " --username=" + DBUSER + " --dbname=" + DBNAME + " --quiet" + " --echo-errors" + " --command=" + '"' + drop_view_ddl + '"')
+                runcmd("PGPASSWORD='" + DBPASS + "'" + " /usr/local/pgsql/bin/psql --host=" + DBHOST + " --port=" + DBPORT + " --username=" + DBUSER + " --dbname=" + DBNAME + " --quiet" + " --echo-errors" + " --command=" + '"' + drop_view_ddl + '"' + " 2>>" + os.path.join(LOG_DIR,'pg_perf_stat_snapper.log'))
                     
     except Exception as e:
         logger.error('Exception: ' + str(e))

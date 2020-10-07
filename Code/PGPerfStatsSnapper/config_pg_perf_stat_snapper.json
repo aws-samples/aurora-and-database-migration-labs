@@ -222,6 +222,10 @@
 		{
 			"source": "anyarray",
 			"target": "text"
+		},
+		{
+			"source": " C ",
+			"target": ""
 		}
 	]
 }

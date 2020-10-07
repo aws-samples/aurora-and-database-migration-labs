@@ -22,6 +22,7 @@
 \qecho 'tables_and_indexes_tot_size.sql   		        Top 20 Tables and Indexes by total Size'
 \qecho 'cache_hit_ratio.sql                 			Cache hit ratio in a time window'
 \qecho 'db_stats.sql                         			Database Level statistics in a time window'
+\qecho 'checkpoint_stats_by_snap_id.sql                         Checkpoints stats in a time window'
 \qecho 'temp_file_by_snap_id.sql                                Temp file stats by Snap ID'
 \qecho 'temp_table_cnt_by_snap_id.sql                           Temp tables count by Snap ID'
 \qecho ' '
