@@ -209,9 +209,9 @@ sudo yum -y install readline-devel
 sudo yum -y install openssl-devel
 mkdir ~/postgresql
 cd ~/postgresql
-curl https://ftp.postgresql.org/pub/source/v11.3/postgresql-11.3.tar.gz -o postgresql-11.3.tar.gz
-tar -xvf postgresql-11.3.tar.gz
-cd postgresql-11.3
+curl https://ftp.postgresql.org/pub/source/v12.3/postgresql-12.3.tar.gz -o postgresql-12.3.tar.gz
+tar -xvf postgresql-12.3.tar.gz
+cd postgresql-12.3
 sudo ./configure --with-openssl
 sudo make -C src/bin install
 sudo make -C src/include install
