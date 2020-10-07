@@ -319,16 +319,22 @@ Pager usage is off.
 
 list_snaps.sql                                          List snapshots available with time window
 
+
 ==SET SNAPSHOT WINDOW==
 
 set_snaps.sql                                           Set Begin and End Snapshot ID for Analysis
 
+
 ==INSTANCE AND DATABASE STATS==
 
 db_and_schema_sizes.sql                                 Database and Schema Sizes
-top_20_tables_and_indexes_by_tot_size.sql               Top 20 Tables and Indexes by total Size
+tables_and_indexes_tot_size.sql                         Top 20 Tables and Indexes by total Size
 cache_hit_ratio.sql                                     Cache hit ratio in a time window
 db_stats.sql                                            Database Level statistics in a time window
+checkpoint_stats_by_snap_id.sql                         Checkpoints stats in a time window
+temp_file_by_snap_id.sql                                Temp file stats by Snap ID
+temp_table_cnt_by_snap_id.sql                           Temp tables count by Snap ID
+
 
 ==SESSION STATS==
 
@@ -337,12 +343,14 @@ session_activity_hist.sql                               Sessions activity with w
 blockers_and_waiters_hist.sql                           Blocking and Waiting Sessions in a time window
 vacuum_history.sql                                      Vacuum activity in a time window
 
+
 ==SQL STATS==
 
 top_20_sqls_by_calls.sql                                Top 20 queries by Executions/Calls in a time window
 top_20_sqls_by_elapsed_time.sql                         Top 20 queries by Elapsed time in a time window
 top_10_sqls_by_cpu_by_snap_id.sql                       Top 10 SQL queries by CPU by Snap ID
 sql_stat_history.sql                                    Execution trend of a query of interest in a time window
+
 
 ==TABLE STATS==
 
@@ -352,6 +360,8 @@ table_fks.sql                                           Details of Foreign Keys 
 top_20_tables_by_seq_scans.sql                          Top 20 Tables by number of Sequential or Full scans
 top_20_tables_by_dmls.sql                               Top 20 Tables by DML activity
 table_bloat.sql                                         Table Bloat Analysis
+sqls_touching_table.sql                                 List SQLs touching a table
+
 
 ==INDEX STATS==
 
@@ -361,6 +371,7 @@ needed_indexes.sql                                      Needed Indexes
 top_20_indexes_by_scans.sql                             Top 20 Indexes by number of Scans initiated in the index
 top_20_indexes_by_avg_tuple_reads.sql                   TOP 20 Indexes by average Tuples Reads/Scan
 unused_indexes.sql                                      Unused Indexes
+duplicate_indexes.sql                                   Duplicate Indexes
 index_bloat.sql                                         Index Bloat Analysis
 
 postgres=>
