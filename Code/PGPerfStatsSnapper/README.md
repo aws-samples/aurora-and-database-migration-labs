@@ -55,13 +55,12 @@ postgres=> SELECT pg_stat_statements_reset();
 ## Setup
 
 1. [Launch an EC2 instance](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/launching-instance.html) where the snapper script will be scheduled.
-   1. Use *"Amazon Linux AMI 2018.03.0 (HVM), SSD Volume Type"* AMI.
-   1. Use r4.8xlarge instance type.
-   1. Use same VPC and subnet/AZ as the RDS/Aurora PostgreSQL Instance
-   1. Add the IAM role to the EC2 instance which was created in the prerequisite step.
-   1. Allocate 30 GB of General Purpose SSD (gp2) storage to the Root volume.
-   1. Add the EC2 instance to the same security group as the RDS/Aurora instance or add it to a new security group (and later add the new security group to inbound rule of the RDS/Aurora security group).
-   1. Make sure to download and save the key pair.
+   1. In **Step 1: Choose an Amazon Machine Image (AMI)**, Choose the *"Amazon Linux 2 AMI (HVM), SSD Volume Type - (64-bit x86)"* AMI.
+   1. In **Step 2: Choose an Instance Type**, Choose t3.medium instance type.
+   1. In **Step 3: Configure Instance Details**, Choose the same **VPC** and **subnet/AZ** as the RDS/Aurora PostgreSQL Instance. Select the **IAM role** in the drop down which you created in the prerequisite step.
+   1. In **Step 4: Add Storage**, allocate 30 GB of General Purpose SSD (gp2) storage to the Root volume.
+   1. In **Step 6: Configure Security Group**, add the EC2 instance to the same security group as the RDS/Aurora instance or add it to a new security group (and later add the new security group to inbound rule of the RDS/Aurora security group).
+   1. In **Step 7: Review Instance Launch** verify the configuration and press the **Launch** button. If you are creating a new key pair, make sure to download it at this step.
 
 2. Add appropriate [inbound rules](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/authorizing-access-to-an-instance.html) to the security group used the previous step to allow your workstation to be able to SSH to the EC2 instance.
 
@@ -84,6 +83,7 @@ sudo make -C src/include install
 sudo make -C src/interfaces install
 sudo make -C doc install
 sudo /sbin/ldconfig /usr/local/pgsql/lib
+sudo yum -y install python3 python3-pip python3-devel
 ```
 
 5. Install Python dependencies
@@ -91,8 +91,8 @@ sudo /sbin/ldconfig /usr/local/pgsql/lib
 sudo su -
 PATH=/usr/local/pgsql/bin:$PATH
 export PATH
-pip install boto3
-pip install PyGreSQL
+pip3 install boto3
+pip3 install PyGreSQL
 exit
 ```
 6. Download the snapper Python script along with the config file from [github](https://github.com/aws-samples/aurora-and-database-migration-labs/tree/master/Code/PGPerfStatsSnapper) and stage it in a directory. We will be using ```/home/ec2-user/scripts``` as the staging directory in the below steps.
@@ -187,14 +187,13 @@ To analyze the metrics collected by Snapper, follow the steps below.
 ## Setup
 
 1. [Launch an EC2 instance](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/launching-instance.html) where the loader script will be executed.
-
-    1. Use "Amazon Linux AMI 2018.03.0 (HVM), SSD Volume Type" AMI.
-    1. Use r4.8xlarge instance type.
-    1. Use same VPC and subnet/AZ as the RDS/Aurora PostgreSQL Instance
-    1. Add the IAM role to the EC2 instance which was created in the prerequisite step.
-    1. Allocate 30 GB of General Purpose SSD (gp2) storage to the Root volume.
-    1. Add the EC2 instance to the same security group as the RDS/Aurora instance or add it to a new security group (and later add the new security group to inbound rule of the RDS/Aurora security group).
-    1. Make sure to download and save the key pair.
+	
+   1. In **Step 1: Choose an Amazon Machine Image (AMI)**, Choose the *"Amazon Linux 2 AMI (HVM), SSD Volume Type - (64-bit x86)"* AMI.
+   1. In **Step 2: Choose an Instance Type**, Choose t3.medium instance type.
+   1. In **Step 3: Configure Instance Details**, Choose the same **VPC** and **subnet/AZ** as the RDS/Aurora PostgreSQL Instance. Select the **IAM role** in the drop down which you created in the prerequisite step.
+   1. In **Step 4: Add Storage**, allocate 30 GB of General Purpose SSD (gp2) storage to the Root volume.
+   1. In **Step 6: Configure Security Group**, add the EC2 instance to the same security group as the RDS/Aurora instance or add it to a new security group (and later add the new security group to inbound rule of the RDS/Aurora security group).
+   1. In **Step 7: Review Instance Launch** verify the configuration and press the **Launch** button. If you are creating a new key pair, make sure to download it at this step.
 
 2. Add appropriate [inbound rules](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/authorizing-access-to-an-instance.html) to the security group used the previous step to allow your workstation to be able to SSH to the EC2 instance.
 
@@ -218,6 +217,7 @@ sudo make -C src/include install
 sudo make -C src/interfaces install
 sudo make -C doc install
 sudo /sbin/ldconfig /usr/local/pgsql/lib
+sudo yum -y install python3 python3-pip python3-devel
 ```
 5.  Install Python dependencies
 
@@ -225,8 +225,8 @@ sudo /sbin/ldconfig /usr/local/pgsql/lib
 sudo su -
 PATH=/usr/local/pgsql/bin:$PATH
 export PATH
-pip install boto3
-pip install PyGreSQL
+pip3 install boto3
+pip3 install PyGreSQL
 exit
 ```
 

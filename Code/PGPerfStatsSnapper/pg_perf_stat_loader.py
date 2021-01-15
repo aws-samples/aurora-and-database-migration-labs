@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from __future__ import print_function
 import boto3
@@ -162,7 +162,7 @@ if __name__ == "__main__":
         sys.exit()
         
     try:
-        ISV_DBNAME = raw_input("Enter Database name to be created for importing PostgreSQL performance statistics:")
+        ISV_DBNAME = input("Enter Database name to be created for importing PostgreSQL performance statistics:")
     
         logger.info('Setting up Database for importing pgawr table(s) ...')
         runcmd("PGPASSWORD='" + DBPASS + "'" + " /usr/local/pgsql/bin/psql --host=" + DBHOST + " --port=" + DBPORT + " --username=" + DBUSER + " --dbname=" + DBNAME + " --command='" + "CREATE DATABASE " +  ISV_DBNAME + ";'" + " --quiet" + " --echo-errors" + " 2>>" + os.path.join(LOG_DIR,'pg_perf_stat_loader.log'))
