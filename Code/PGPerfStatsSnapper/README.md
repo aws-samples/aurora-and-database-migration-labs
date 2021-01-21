@@ -27,7 +27,13 @@ The snapper script collects and stores the PostgreSQL database metrics in separa
 
 ## Quick Start
 
-1. Download and deploy the [CloudFormation template](https://github.com/aws-samples/aurora-and-database-migration-labs/blob/master/Code/PGPerfStatsSnapper/templates/PG_Snapper.yml) in your AWS account in the AWS region where the PostgreSQL database to be monitored is running. The CloudFormation stack requires a few parameters, as shown in the following screenshot.
+1. Click  (https://console.aws.amazon.com/cloudformation/home?#/stacks/create/review?stackName=pg-snapper&templateURL=https://auroraworkshopassets.s3-us-west-2.amazonaws.com/templates/pg-snapper/PG_Snapper.yml) to deploy the CloudFormation stack in your AWS account in the region where the PostgreSQL instance to be monitored is running. The CloudFormation stack requires a few parameters, as shown in the following screenshot.
+
+<a href="https://console.aws.amazon.com/cloudformation/home?#/stacks/create/review?stackName=pg-snapper&templateURL=https://auroraworkshopassets.s3-us-west-2.amazonaws.com/templates/pg-snapper/PG_Snapper.yml" target="_blank"><img width=200 src='media/cloudformation-launch-stack.png' alt="Launch Stack" style="float:left"></a>
+
+
+[<img src="media/cloudformation-launch-stack.png">](https://console.aws.amazon.com/cloudformation/home?#/stacks/create/review?stackName=pg-snapper&templateURL=https://auroraworkshopassets.s3-us-west-2.amazonaws.com/templates/pg-snapper/PG_Snapper.yml)
+
 
 ![](media/cfn-stack-parameters.png)
 
