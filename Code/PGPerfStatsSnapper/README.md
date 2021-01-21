@@ -91,7 +91,7 @@ The CloudFormation stack does the following setup in your AWS Account.
 							AWS region (default: None)
 	```
 
-6. Schedule the Snapper script in crontab to run every 1 minute. Here the <output directory> is optional and if not provided all the output will be stored under "output" sub-directory where the script is staged.
+6. Schedule the Snapper script in crontab to run every 1 minute. Here the \<output directory\> is optional and if not provided all the output will be stored under "output" sub-directory where the script is staged.
 
 	```bash
 	*/1 * * * * /home/ec2-user/scripts/pg_perf_stat_snapper.py -e <PostgreSQL Instance EndPoint> -P <Port> -d <Database Name where Application objects are stored> -u <Master UserName> -s <AWS Secretes Manager ARN. Cloudformation Output Key: PGSnapperSecretARN> -m snap [-o <output directory>] -r <AWS Region>
