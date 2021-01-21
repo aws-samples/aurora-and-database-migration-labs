@@ -1,298 +1,193 @@
 # PostgreSQL Performance Stats Snapper
 
-While doing load testing on RDS/Aurora PostgreSQL for proof of concept (POC) or for testing the impact of any configuration or code change, its important to collect all the database performance related metrics periodically at a certain interval for post analysis.
-RDS Enhanced Monitoring and RDS Performance Insights collect a lot of database performance metrics and provide dashboards for viewing the historical data. There are a lot of other database performance statistics and metrics, which can be collected to assist with deep dive analysis of performance problems post the load testing.
+While doing load testing on Amazon RDS/Aurora PostgreSQL for proof of concept (POC) or for testing the impact of any configuration or code change, its important to collect all the database performance related metrics periodically at a certain interval for post analysis.
+RDS Enhanced Monitoring and RDS Performance Insights collect a lot of database performance metrics and provide dashboards for viewing the historical data. There are a lot of other database engine specific performance statistics and metrics, which can be collected to assist with deep dive analysis of performance problems post the load testing.
 
 The snapper script provided here enables periodic collection (snapping) of PostgreSQL performance related statistics and metrics. The config file used by the script can be customized to add and remove database dictionary views and queries to be snapped as required.
-The snapper script collects and stores the PostgreSQL database metrics in separate OS level files to have minimal impact on the database. These files can be loaded into another PostgreSQL instance by the loader script for post analysis.
+The snapper script collects and stores the PostgreSQL database metrics in separate OS level files to have minimal impact on the database. These files can be loaded into another PostgreSQL instance by the loader script for analysis post the load testing.
 
 :warning: You must accept all the risks associated with production use of the **Snapper** tool in regards to unknown/undesirable consequences. If you do not assume all the associated risk, you shouldn't be using this tool.
 
 ## Prerequisites
 
+1. When you create a new RDS PostgreSQL database or Aurora PostgreSQL cluster, it comes with default parameter groups, which cannot be updated. If you haven't done it already, create a [custom DB parameter group](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithParamGroups.html) for RDS PostgreSQL and associate it with the RDS instance. For Aurora PostgreSQL, create a [custom cluster parameter group along with a custom DB parameter group](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/USER_WorkingWithParamGroups.html). Associate the cluster parameter group with the Aurora cluster and the DB parameter group with the primary DB instance and the Aurora replicas.
+
 1. Add **pg_stat_statements** to [shared_preload_libraries](https://www.postgresql.org/docs/11/runtime-config-client.html) DB parameter and create required extensions by running the following in the PostgreSQL database where application related objects are stored. 
  
-   **Note:**  ```aurora_stat_utils``` extension is valid only for Aurora PostgreSQL.
-```bash
-psql --host=<PostgreSQL Instance EndPoint> --port=<Port> --username=<Master UserName> --dbname=<Database Name where Application objects are stored>
+	**Note:**  ```aurora_stat_utils``` extension is valid only for Aurora PostgreSQL.
+	```bash
+	psql --host=<PostgreSQL Instance EndPoint> --port=<Port> --username=<Master UserName> --dbname=<Database Name where Application objects are stored>
 
-postgres=> create extension pg_stat_statements;
-postgres=> create extension aurora_stat_utils;
-```
+	postgres=> create extension pg_stat_statements;
+	postgres=> create extension aurora_stat_utils;
+	```
 
-2. Set **track_activity_query_size** parameter to the max value 102400 to capture the full text of very long SQL statements. This can be set in DB Parameter group for RDS and Cluster Parameter group for Aurora.
+1. Set **track_activity_query_size** parameter to the max value 102400 to capture the full text of very long SQL statements. This can be set in DB Parameter group for RDS and Cluster Parameter group for Aurora.
 
-3. Discard all statistics gathered by pg_stat_statements before running load test by running the following:
-```bash
-psql --host=<PostgreSQL Instance EndPoint> --port=<Port> --username=<Master UserName> --dbname=<Database Name where Application objects are stored>
 
-postgres=> SELECT pg_stat_statements_reset();
-```
+## Quick Start
 
-4. Store database master credential in [AWS secret manager](https://docs.aws.amazon.com/secretsmanager/latest/userguide/manage_create-basic-secret.html) and note down the secret ARN. This needs to be provided as a parameter to the snapper script to retrieve database credential for logging into the PostgreSQL instance.
+1. Download and deploy the [CloudFormation template](https://github.com/aws-samples/aurora-and-database-migration-labs/blob/master/Code/PGPerfStatsSnapper/templates/PG_Snapper.yml) in your AWS account in the AWS region where the PostgreSQL database to be monitored is running. The CloudFormation stack requires a few parameters, as shown in the following screenshot.
 
-5. Create an [IAM role for EC2](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-roles-for-amazon-ec2.html#create-iam-role) Service with an inline policy similar to the following. This enables the EC2 instance (which is used to schedule the snapper script) to retrieve AWS Secrets Manager stored secrets and to put/pre-sign files in AWS S3.
-```json
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Sid": "VisualEditor0",
-            "Effect": "Allow",
-            "Action": "s3:*",
-            "Resource": "*"
-        },
-        {
-        "Effect": "Allow",
-        "Action": "secretsmanager:GetSecretValue",
-        "Resource": "*"
-        }
-    ]
-}
-```
-6. [Create a S3 bucket](https://docs.aws.amazon.com/AmazonS3/latest/user-guide/create-bucket.html) for uploading and sharing the output generated by the snapper script. You can create the S3 bucket with all the default options.
+![](media/cfn-stack-parameters.png)
 
-## Setup
+| Parameter | Description |
+| --- | --- |
+| VPCID | VPC ID of PostgreSQL database instance (e.g., vpc-0343606e) to be monitored |
+| SubnetID | VPC Subnet ID of the PostgreSQL database instance (e.g., subnet-a0246dcd) to be monitored |
+| DBSecurityGroupID | Security Group ID of the PostgreSQL database instance (e.g., sg-8c14mg64) to be monitored |
+| InstanceType | PG Snapper EC2 instance type. Leave the default value |
+| DBUsername | Master User Name for the PostgreSQL Instance to be monitored |
+| PGMasterUserPassword | Master User Password for the PostgreSQL Instance to be monitored |
+| DBPort | Port for the PostgreSQL Instance to be monitored |
 
-1. [Launch an EC2 instance](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/launching-instance.html) where the snapper script will be scheduled.
-   1. In **Step 1: Choose an Amazon Machine Image (AMI)**, Choose the *"Amazon Linux 2 AMI (HVM), SSD Volume Type - (64-bit x86)"* AMI.
-   1. In **Step 2: Choose an Instance Type**, Choose t3.medium instance type.
-   1. In **Step 3: Configure Instance Details**, Choose the same **VPC** and **subnet/AZ** as the RDS/Aurora PostgreSQL Instance. Select the **IAM role** in the drop down which you created in the prerequisite step.
-   1. In **Step 4: Add Storage**, allocate 30 GB of General Purpose SSD (gp2) storage to the Root volume.
-   1. In **Step 6: Configure Security Group**, add the EC2 instance to the same security group as the RDS/Aurora instance or add it to a new security group (and later add the new security group to inbound rule of the RDS/Aurora security group).
-   1. In **Step 7: Review Instance Launch** verify the configuration and press the **Launch** button. If you are creating a new key pair, make sure to download it at this step.
+The CloudFormation stack does the following setup in your AWS Account.
+* Stores the database master password in an AWS Secrets Manager secret which Snapper uses to connect to the PostgreSQL instance.
+* Creates an EC2 instance with the latest Amazon Linux 2 AMI and deploys it in the same VPC and Subnet as the PostgreSQL database instance.
+* Bootstraps the EC2 instance by installing AWS Systems Manager(SSM) agent, PostgreSQL Client, required Python packages and staging the Snapper scripts.
+* Creates an S3 bucket which you can use for storing and sharing Snapper output.
+* Adds the security group for the EC2 instance to the security group assigned to the PostgreSQL instance for inbound network access.
 
-2. Add appropriate [inbound rules](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/authorizing-access-to-an-instance.html) to the security group used the previous step to allow your workstation to be able to SSH to the EC2 instance.
 
-3. Optional. If you created a new security group while launching EC2, make sure to add that security group to inbound rule of the RDS/Aurora security group for the EC2 instance to be able to communicate with the PostgreSQL instance.
+2. Once the CloudFormation stack setup is complete, click the **Outputs** tab to note down the resources that you will need for running Snapper.
 
-4. Install PostgreSQL client on the EC2 instance
-```bash
-sudo yum -y update
-sudo yum -y group install "Development Tools"
-sudo yum -y install readline-devel
-sudo yum -y install openssl-devel
-mkdir ~/postgresql
-cd ~/postgresql
-curl https://ftp.postgresql.org/pub/source/v12.3/postgresql-12.3.tar.gz -o postgresql-12.3.tar.gz
-tar -xvf postgresql-12.3.tar.gz
-cd postgresql-12.3
-sudo ./configure --with-openssl
-sudo make -C src/bin install
-sudo make -C src/include install
-sudo make -C src/interfaces install
-sudo make -C doc install
-sudo /sbin/ldconfig /usr/local/pgsql/lib
-sudo yum -y install python3 python3-pip python3-devel
-```
+3. Select the EC2 instance (CloudFormation Output Key: EC2InstanceID) in EC2 Dashboard and click **Connect**. Click on **Session Manager** and click **Connect** again.
 
-5. Install Python dependencies
-```bash
-sudo su -
-PATH=/usr/local/pgsql/bin:$PATH
-export PATH
-pip3 install boto3
-pip3 install PyGreSQL
-exit
-```
-6. Download the snapper Python script along with the config file from [github](https://github.com/aws-samples/aurora-and-database-migration-labs/tree/master/Code/PGPerfStatsSnapper) and stage it in a directory. We will be using ```/home/ec2-user/scripts``` as the staging directory in the below steps.
-```bash
-mkdir -p /home/ec2-user/scripts
-cd /home/ec2-user/scripts
-curl -L https://raw.githubusercontent.com/aws-samples/aurora-and-database-migration-labs/master/Code/PGPerfStatsSnapper/pg_perf_stat_snapper.py -o pg_perf_stat_snapper.py
-curl -L https://raw.githubusercontent.com/aws-samples/aurora-and-database-migration-labs/master/Code/PGPerfStatsSnapper/config_pg_perf_stat_snapper.json -o config_pg_perf_stat_snapper.json
-chmod 755 pg_perf_stat_snapper.py
-```
+![](media/Session-Manager.png)
 
-Script Usage:
+4. Session Manager uses ssm-user user to connect to the EC2 instance by default. Change user to **ec2-user** by running the following command:
 
-```bash
-[ec2-user@ip-172-31-1-240 scripts]$ /home/ec2-user/scripts/pg_perf_stat_snapper.py -h
-usage: pg_perf_stat_snapper.py [-h] -e ENDPOINT -P PORT -d DBNAME -u USER -s
-                               SECRETARN -m MODE [-o OUTPUTDIR] -r REGION
+	```bash
+	sudo su -l ec2-user
+	```
 
-Snap PostgreSQL performance statistics and exit
+5. Review the Snapper script usage by running the following command:
 
-optional arguments:
-  -h, --help            show this help message and exit
-  -e ENDPOINT, --endpoint ENDPOINT
-                        PostgreSQL Instance Endpoint (default: None)
-  -P PORT, --port PORT  Port (default: None)
-  -d DBNAME, --dbname DBNAME
-                        Database Name where Application objects are stored
-                        (default: None)
-  -u USER, --user USER  Database UserName (default: None)
-  -s SECRETARN, --SecretARN SECRETARN
-                        AWS Secrets Manager stored Secret ARN (default: None)
-  -m MODE, --mode MODE  Mode in which the script will run: Specify either snap
-                        or package (default: None)
-  -o OUTPUTDIR, --outputdir OUTPUTDIR
-                        Output Directory (default:
-                        /home/ec2-user/scripts/output)
-  -r REGION, --region REGION
-                        AWS region (default: None)
-```
+	```bash
+	[ec2-user@ip-172-31-14-11 ~]$ /home/ec2-user/scripts/pg_perf_stat_snapper.py -h
+	
+	usage: pg_perf_stat_snapper.py [-h] -e ENDPOINT -P PORT -d DBNAME -u USER -s
+								   SECRETARN -m MODE [-o OUTPUTDIR] -r REGION
 
-7. Schedule the script in crontab to run every 1 minute. Here the <output directory> is optional and if not provided all the output will be stored under "output" subdirectory where the script is staged.
-```bash
-*/1 * * * * /home/ec2-user/scripts/pg_perf_stat_snapper.py -e <PostgreSQL Instance EndPoint> -P <Port> -d <Database Name where Application objects are stored> -u <Master UserName> -s <AWS Secretes Manager ARN> -m snap [-o <output directory>] -r <AWS Region>
-```
+	Snap PostgreSQL performance statistics and exit
+
+	optional arguments:
+	  -h, --help            show this help message and exit
+	  -e ENDPOINT, --endpoint ENDPOINT
+							PostgreSQL Instance Endpoint (default: None)
+	  -P PORT, --port PORT  Port (default: None)
+	  -d DBNAME, --dbname DBNAME
+							Database Name where Application objects are stored
+							(default: None)
+	  -u USER, --user USER  Database UserName (default: None)
+	  -s SECRETARN, --SecretARN SECRETARN
+							AWS Secrets Manager stored Secret ARN (default: None)
+	  -m MODE, --mode MODE  Mode in which the script will run: Specify either snap
+							or package (default: None)
+	  -o OUTPUTDIR, --outputdir OUTPUTDIR
+							Output Directory (default:
+							/home/ec2-user/scripts/output)
+	  -r REGION, --region REGION
+							AWS region (default: None)
+	```
+
+6. Schedule the Snapper script in crontab to run every 1 minute. Here the <output directory> is optional and if not provided all the output will be stored under "output" sub-directory where the script is staged.
+
+	```bash
+	*/1 * * * * /home/ec2-user/scripts/pg_perf_stat_snapper.py -e <PostgreSQL Instance EndPoint> -P <Port> -d <Database Name where Application objects are stored> -u <Master UserName> -s <AWS Secretes Manager ARN. Cloudformation Output Key: PGSnapperSecretARN> -m snap [-o <output directory>] -r <AWS Region>
+	```
+
 ## Load Test
 
+1. (Optional) Discard all statistics gathered by pg_stat_statements before running load test by running the following:
+	```bash
+	psql --host=<PostgreSQL Instance EndPoint> --port=<Port> --username=<Master UserName> --dbname=<Database Name where Application objects are stored>
+
+	postgres=> SELECT pg_stat_statements_reset();
+	```
 1. Perform Load test after the snapper script is scheduled in crontab.
 
-2. Once load test is complete, comment out crontab to disable the snapper scheduled runs.
+1. Once load test is complete, comment out crontab to disable the snapper scheduled runs.
 
 ## Packaging the Output
 
 1. Package the snapper output by running the following:
-```bash
-/home/ec2-user/scripts/pg_perf_stat_snapper.py -e <PostgreSQL Instance EndPoint> -P <Port> -d <Database Name where Application objects are stored> -u <Master UserName> -s <AWS Secretes Manager ARN> -m package [-o <output directory>] -r <AWS Region>
-```
-2. Zip the output and log directory, upload to the S3 bucket created in the prerequisite section and create a pre-signed URL of the zip file. In the example below ```s3://pg-snapper-output/``` is the bucket used for uploading the zip file.
-```bash
-cd /home/ec2-user/scripts
-zip -r pg-snapper-output output
-zip -r pg-snapper-output log
-aws s3 cp pg-snapper-output.zip s3://pg-snapper-output/
-aws s3 presign s3://pg-snapper-output/pg-snapper-output.zip --expires-in 604800
-```
+	```bash
+	/home/ec2-user/scripts/pg_perf_stat_snapper.py -e <PostgreSQL Instance EndPoint> -P <Port> -d <Database Name where Application objects are stored> -u <Master UserName> -s <AWS Secretes Manager ARN. Cloudformation Output Key: PGSnapperSecretARN> -m package [-o <output directory>] -r <AWS Region>
+	```
+2. Zip the output and log directory, upload to the S3 bucket created by the CloudFormation Stack (CloudFormation Output Key: SnapperS3Bucket) and create a pre-signed URL of the zip file. In the example below ```s3://pg-snapper-output/``` is the bucket used for uploading the zip file.
+	```bash
+	cd /home/ec2-user/scripts
+	zip -r pg-snapper-output output
+	zip -r pg-snapper-output log
+	aws s3 cp pg-snapper-output.zip s3://pg-snapper-output/
+	aws s3 presign s3://pg-snapper-output/pg-snapper-output.zip --expires-in 604800
+	```
 3. Share the S3 URL for loading the output and do further analysis.
+
 
 # PostgreSQL Performance Stats Loader
 
-To analyze the metrics collected by Snapper, follow the steps below.
+To load and analyze the metrics collected by Snapper, follow the steps below.
 
 > **_NOTE:_** You can use the same EC2 instance for running Snapper and Loader Scripts.
 
-## Prerequisites
+## Setup
+
+Follow the Quick Start above if you want to use another EC2 instance for running the loader script and analyzing the results. During the CloudFormation stack setup, provide information for the PostgreSQL instance where you want to load the Snapper output. Once the stack setup is complete, go to the **Import Snapper Output** section below.
+
+If you are using the same EC2 instance you used for Snapper, complete the following steps to use another PostgreSQL instance to load Snapper output and analyze the results.
 
 1. Store database master credential of the PostgreSQL instance where the snapper output will be loaded in [AWS secret manager](https://docs.aws.amazon.com/secretsmanager/latest/userguide/manage_create-basic-secret.html) and note down the secret ARN. This needs to be provided as a parameter to the loader script to retrieve database credential for logging into the PostgreSQL instance.
 
-2.  Create an [IAM role for EC2](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-roles-for-amazon-ec2.html#create-iam-role) Service with an inline policy similar to the following. This enables the EC2 instance (which is used to run the loader script) to retrieve AWS Secrets Manager stored secrets.
+1.  Select the IAM role assigned to the EC2 instance, expand the **secret-access-policy** Policy on the **Permissions** tab and click **Edit policy**. Click on **JSON** tab and modify the policy as follows specifying the AWS secretes managers secret ARNs for both the PostgreSQL instances.
 
-```json
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-        "Effect": "Allow",
-        "Action": "secretsmanager:GetSecretValue",
-        "Resource": "*"
-        }
-    ]
-}
-```
-
-## Setup
-
-1. [Launch an EC2 instance](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/launching-instance.html) where the loader script will be executed.
-	
-   1. In **Step 1: Choose an Amazon Machine Image (AMI)**, Choose the *"Amazon Linux 2 AMI (HVM), SSD Volume Type - (64-bit x86)"* AMI.
-   1. In **Step 2: Choose an Instance Type**, Choose t3.medium instance type.
-   1. In **Step 3: Configure Instance Details**, Choose the same **VPC** and **subnet/AZ** as the RDS/Aurora PostgreSQL Instance. Select the **IAM role** in the drop down which you created in the prerequisite step.
-   1. In **Step 4: Add Storage**, allocate 30 GB of General Purpose SSD (gp2) storage to the Root volume.
-   1. In **Step 6: Configure Security Group**, add the EC2 instance to the same security group as the RDS/Aurora instance or add it to a new security group (and later add the new security group to inbound rule of the RDS/Aurora security group).
-   1. In **Step 7: Review Instance Launch** verify the configuration and press the **Launch** button. If you are creating a new key pair, make sure to download it at this step.
-
-2. Add appropriate [inbound rules](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/authorizing-access-to-an-instance.html) to the security group used the previous step to allow your workstation to be able to SSH to the EC2 instance.
-
-3. Optional. If you created a new security group while launching EC2, make sure to add that security group to inbound rule of the RDS/Aurora security group for the EC2 instance to be able to communicate with the PostgreSQL instance.
-
-4. Install PostgreSQL client on the EC2 instance
-
-```bash
-sudo yum -y update
-sudo yum -y group install "Development Tools"
-sudo yum -y install readline-devel
-sudo yum -y install openssl-devel
-mkdir ~/postgresql
-cd ~/postgresql
-curl https://ftp.postgresql.org/pub/source/v12.3/postgresql-12.3.tar.gz -o postgresql-12.3.tar.gz
-tar -xvf postgresql-12.3.tar.gz
-cd postgresql-12.3
-sudo ./configure --with-openssl
-sudo make -C src/bin install
-sudo make -C src/include install
-sudo make -C src/interfaces install
-sudo make -C doc install
-sudo /sbin/ldconfig /usr/local/pgsql/lib
-sudo yum -y install python3 python3-pip python3-devel
-```
-5.  Install Python dependencies
-
-```bash
-sudo su -
-PATH=/usr/local/pgsql/bin:$PATH
-export PATH
-pip3 install boto3
-pip3 install PyGreSQL
-exit
-```
-
-6. Download the loader Python script along with the config file from [github](https://github.com/aws-samples/aurora-and-database-migration-labs/tree/master/Code/PGPerfStatsSnapper) and stage it in a directory. We will be using /home/ec2-user/scripts as the staging directory in the below steps.
-
-```bash
-mkdir -p /home/ec2-user/scripts
-cd /home/ec2-user/scripts
-curl -L https://raw.githubusercontent.com/aws-samples/aurora-and-database-migration-labs/master/Code/PGPerfStatsSnapper/pg_perf_stat_loader.py -o pg_perf_stat_loader.py
-curl -L https://raw.githubusercontent.com/aws-samples/aurora-and-database-migration-labs/master/Code/PGPerfStatsSnapper/config_pg_perf_stat_snapper.json -o config_pg_perf_stat_snapper.json
-chmod 755 pg_perf_stat_loader.py
-```
-
-Script Usage:
-
-```bash
-[ec2-user@ip-172-31-6-131 scripts]$ /home/ec2-user/scripts/pg_perf_stat_loader.py -h
-usage: pg_perf_stat_loader.py [-h] -e ENDPOINT -P PORT [-d DBNAME] -u USER -s
-                              SECRETARN -o STAGINGDIR -r REGION
-
-Snap PostgreSQL performance statistics and exit
-
-optional arguments:
-  -h, --help            show this help message and exit
-  -e ENDPOINT, --endpoint ENDPOINT
-                        PostgreSQL Instance Endpoint (default: None)
-  -P PORT, --port PORT  Port (default: None)
-  -d DBNAME, --dbname DBNAME
-                        Database Name (default: postgres)
-  -u USER, --user USER  Database UserName (default: None)
-  -s SECRETARN, --SecretARN SECRETARN
-                        AWS Secrets Manager stored Secret ARN (default: None)
-  -o STAGINGDIR, --stagingdir STAGINGDIR
-                        Directory containing the snapper generated csv files
-                        (default: None)
-  -r REGION, --region REGION
-                        AWS region (default: None)
-```
+	```
+	{
+		"Version": "2012-10-17",
+		"Statement": [
+			{
+				"Action": [
+					"secretsmanager:GetSecretValue"
+				],
+				"Resource": [
+					"<Secret ARN 1>",
+					"<Secret ARN 2>"
+				],
+				"Effect": "Allow"
+			}
+		]
+	}
+	```
 
 ## Import Snapper Output
 
 1. Download the snapper outputs from the provided pre-signed S3 URL.
 
-```bash
-cd /home/ec2-user/scripts
-curl "<S3 pre-signed URL>" -o snapper-output.zip
-unzip snapper-output.zip
-```
+	```bash
+	cd /home/ec2-user/scripts
+	curl "<S3 pre-signed URL>" -o snapper-output.zip
+	unzip snapper-output.zip
+	```
 
 2. Import the snapper output by running the following:
 
-```bash
-/home/ec2-user/scripts/pg_perf_stat_loader.py -e <PostgreSQL Instance EndPoint> -P <Port> -d postgres -u <Master UserName> -s <AWS Secretes Manager ARN> -o <Staged snapper output directory> -r <AWS Region>
-```
+	```bash
+	/home/ec2-user/scripts/pg_perf_stat_loader.py -e <PostgreSQL Instance EndPoint> -P <Port> -d postgres -u <Master UserName> -s <AWS Secretes Manager ARN. Cloudformation Output Key: PGSnapperSecretARN> -o <Staged snapper output directory> -r <AWS Region>
+	```
 
-For e.g.
+	For e.g.
 
-```bash
-/home/ec2-user/scripts/pg_perf_stat_loader.py -e aurorapg.cluster-xxxxxxxxxxx.us-east-1.rds.amazonaws.com -P 5432 -d postgres -u masteruser -s arn:aws:secretsmanager:us-east-1:111111111111:secret:masteruser_secret-XbRXX -o /home/ec2-user/scripts/output/pgloadinst.cluster-xxxxxxxxxxxx.us-east-1.rds.amazonaws.com/postgres -r us-east-1
-```
+	```bash
+	/home/ec2-user/scripts/pg_perf_stat_loader.py -e aurorapg.cluster-xxxxxxxxxxx.us-east-1.rds.amazonaws.com -P 5432 -d postgres -u masteruser -s arn:aws:secretsmanager:us-east-1:111111111111:secret:masteruser_secret-XbRXX -o /home/ec2-user/scripts/output/pgloadinst.cluster-xxxxxxxxxxxx.us-east-1.rds.amazonaws.com/postgres -r us-east-1
+	```
 
 # Sample queries for Snapper Data Analysis
 
 Sample queries for snapper data analysis is available in [Github](https://github.com/aws-samples/aurora-and-database-migration-labs/tree/master/Code/PGPerfStatsSnapper/SQLs).
 
 ## Download SQL files for analysis
+
 Download the SQLs to a machine where PSQL is installed and which has access to the PostgreSQL instance where snapper data was uploaded.
 
 ```bash
@@ -300,7 +195,7 @@ cd /home/ec2-user/scripts
 svn checkout "https://github.com/aws-samples/aurora-and-database-migration-labs/trunk/Code/PGPerfStatsSnapper/SQLs"
 ```
 
-## Run SQLs for analysis
+## Run SQL queries for analysis
 
 ```bash
 cd /home/ec2-user/scripts/SQLs
