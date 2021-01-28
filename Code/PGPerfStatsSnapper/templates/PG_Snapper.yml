@@ -245,7 +245,9 @@ Resources:
   S3Bucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub "pg-snapper-${AWS::StackName}"
+      Tags:
+        - Key: Application
+          Value: !Sub "PostgreSQL Snapper https://github.com/aws-samples/aurora-and-database-migration-labs/tree/master/Code/PGPerfStatsSnapper"
 
   EC2Role:
     Type: AWS::IAM::Role
@@ -375,8 +377,8 @@ Resources:
                 sudo yum -y install python3 python3-pip python3-devel >> /debug.log
                 PATH=/usr/local/pgsql/bin:$PATH
                 export PATH
-                pip3 install boto3
-                pip3 install PyGreSQL
+                pip3 install boto3 >> /debug.log 
+                pip3 install PyGreSQL >> /debug.log
                 echo "$(date "+%F %T") * Finished installing Python packages" >> /debug.log           
                 
                 # Install required Python packages
