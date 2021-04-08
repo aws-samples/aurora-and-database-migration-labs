@@ -91,7 +91,7 @@ The CloudFormation stack does the following setup in your AWS Account.
 							AWS region (default: None)
 	```
 
-Note that if you are specifying the output directory using the -o option, the path needs to be specified as an absolute path for e.g. /home/ec2-user/mysnapperoutput.
+    Note that if you are specifying the output directory using the -o option, the path needs to be specified as an absolute path for e.g. /home/ec2-user/mysnapperoutput.
 
 6. Run the Snapper script manually once using the following command and review the log file generated under "/home/ec2-user/scripts/log" sub-directory. By default, all the output will be stored under "/home/ec2-user/scripts/output" sub-directory. If you don't see any error in the log file, proceed to the next step. For further troubleshooting, see the **Troubleshooting** section below.
 
