@@ -16,7 +16,7 @@ The snapper script collects and stores the PostgreSQL database metrics in separa
  
 	**Note:**  ```aurora_stat_utils``` extension is valid only for Aurora PostgreSQL.
 	```bash
-	psql --host=<PostgreSQL Instance EndPoint> --port=<Port> --username=<Master UserName> --dbname=<Database Name where Application objects are stored>
+	/usr/local/pgsql/bin/psql --host=<PostgreSQL Instance EndPoint> --port=<Port> --username=<Master UserName> --dbname=<Database Name where Application objects are stored>
 
 	postgres=> create extension pg_stat_statements;
 	postgres=> create extension aurora_stat_utils;
@@ -61,7 +61,7 @@ The CloudFormation stack does the following setup in your AWS Account.
 	sudo su -l ec2-user
 	```
 
-5. Review the Snapper script usage by running the following command:
+5. Review the Snapper script usage by running the following command. 
 
 	```bash
 	[ec2-user@ip-172-31-14-11 ~]$ /home/ec2-user/scripts/pg_perf_stat_snapper.py -h
@@ -91,17 +91,25 @@ The CloudFormation stack does the following setup in your AWS Account.
 							AWS region (default: None)
 	```
 
-6. Schedule the Snapper script in crontab to run every 1 minute. Here the \<output directory\> is optional and if not provided all the output will be stored under "output" sub-directory where the script is staged.
+Note that if you are specifying the output directory using the -o option, the path needs to be specified as an absolute path for e.g. /home/ec2-user/mysnapperoutput.
+
+6. Run the Snapper script manually once using the following command and review the log file generated under "/home/ec2-user/scripts/log" sub-directory. By default, all the output will be stored under "/home/ec2-user/scripts/output" sub-directory. If you don't see any error in the log file, proceed to the next step. For further troubleshooting, see the **Troubleshooting** section below.
+
+    ```bash
+	/home/ec2-user/scripts/pg_perf_stat_snapper.py -e <PostgreSQL Instance EndPoint> -P <Port> -d <Database Name where Application objects are stored> -u <Master UserName> -s <AWS Secretes Manager ARN. Cloudformation Output Key: PGSnapperSecretARN> -m snap -r <AWS Region>
+	```
+
+7. Schedule the Snapper script in crontab to run every 1 minute. 
 
 	```bash
-	*/1 * * * * /home/ec2-user/scripts/pg_perf_stat_snapper.py -e <PostgreSQL Instance EndPoint> -P <Port> -d <Database Name where Application objects are stored> -u <Master UserName> -s <AWS Secretes Manager ARN. Cloudformation Output Key: PGSnapperSecretARN> -m snap [-o <output directory>] -r <AWS Region>
+	*/1 * * * * /home/ec2-user/scripts/pg_perf_stat_snapper.py -e <PostgreSQL Instance EndPoint> -P <Port> -d <Database Name where Application objects are stored> -u <Master UserName> -s <AWS Secretes Manager ARN. Cloudformation Output Key: PGSnapperSecretARN> -m snap -r <AWS Region>
 	```
 
 ## Load Test
 
 1. (Optional) Discard all statistics gathered by pg_stat_statements before running load test by running the following:
 	```bash
-	psql --host=<PostgreSQL Instance EndPoint> --port=<Port> --username=<Master UserName> --dbname=<Database Name where Application objects are stored>
+	/usr/local/pgsql/bin/psql --host=<PostgreSQL Instance EndPoint> --port=<Port> --username=<Master UserName> --dbname=<Database Name where Application objects are stored>
 
 	postgres=> SELECT pg_stat_statements_reset();
 	```
@@ -113,7 +121,7 @@ The CloudFormation stack does the following setup in your AWS Account.
 
 1. Package the snapper output by running the following:
 	```bash
-	/home/ec2-user/scripts/pg_perf_stat_snapper.py -e <PostgreSQL Instance EndPoint> -P <Port> -d <Database Name where Application objects are stored> -u <Master UserName> -s <AWS Secretes Manager ARN. Cloudformation Output Key: PGSnapperSecretARN> -m package [-o <output directory>] -r <AWS Region>
+	/home/ec2-user/scripts/pg_perf_stat_snapper.py -e <PostgreSQL Instance EndPoint> -P <Port> -d <Database Name where Application objects are stored> -u <Master UserName> -s <AWS Secretes Manager ARN. Cloudformation Output Key: PGSnapperSecretARN> -m package -r <AWS Region>
 	```
 2. Zip the output and log directory, upload to the S3 bucket created by the CloudFormation Stack (CloudFormation Output Key: SnapperS3Bucket) and create a pre-signed URL of the zip file. In the example below ```s3://pg-snapper-output/``` is the bucket used for uploading the zip file.
 	```bash
@@ -125,6 +133,17 @@ The CloudFormation stack does the following setup in your AWS Account.
 	```
 3. Share the S3 URL for loading the output and do further analysis.
 
+## Troubleshooting
+
+1. If you are seeing the error message "ERROR: Unexpected error: Couldn't connect to the PostgreSQL instance." while running Snapper, the stored password in AWS Secrets Manager secret might not be correct. You can view the password by going to [AWS Secrets Manager console](https://console.aws.amazon.com/secretsmanager/home?#/listSecrets), selecting the secret created by CloudFormation (CloudFormation Output Key: PGSnapperSecretARN) and selecting **Retrieve secret value**. Try to logon to the PostgreSQL database using the retrieved password as follows and see if you are able to connect to it. If the password is incorrect, you can edit the password stored in AWS Secrets Manager secret by selecting the "Edit" button on the same page.
+
+    ```bash
+	/usr/local/pgsql/bin/psql --host=<PostgreSQL Instance EndPoint> --port=<Port> --username=<Master UserName> --dbname=<Database Name where Application objects are stored>
+	```
+
+2. If you are seeing the error message "ERROR: Another instance of snapper is already running for the same DBHOST and database. Exiting ..." while running Snapper, this means that another instance of snapper is already running for the same PostgreSQL database or Snapper was terminated abnormally during the previous run. Snapper creates a hidden file in the same directory where the scripts are staged to make sure only one instance of Snapper is running at a time for a particular PostgreSQL database. The file name is in the format ".snapper_<DBHOST>_<DBNAME>.running". If snapper was killed abnormally for some reason and the ".running" file was not deleted, you need to delete this file manually before you can re-run Snapper.
+
+3. To debug any other issue with snapper, review the log file stored under the log directory. The log directory is created under the directory where the scripts are staged for e.g. "/home/ec2-user/scripts/log".
 
 # PostgreSQL Performance Stats Loader
 
@@ -200,7 +219,7 @@ svn checkout "https://github.com/aws-samples/aurora-and-database-migration-labs/
 ```bash
 cd /home/ec2-user/scripts/SQLs
 
-psql --host=<endpoint> --port=<port> --username=<username> --dbname=postgres --password
+/usr/local/pgsql/bin/psql --host=<endpoint> --port=<port> --username=<username> --dbname=postgres --password
 
 \l+
 
