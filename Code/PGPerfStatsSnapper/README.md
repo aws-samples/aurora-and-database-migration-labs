@@ -201,6 +201,14 @@ If you are using the same EC2 instance you used for Snapper, complete the follow
 	/home/ec2-user/scripts/pg_perf_stat_loader.py -e aurorapg.cluster-xxxxxxxxxxx.us-east-1.rds.amazonaws.com -P 5432 -d postgres -u masteruser -s arn:aws:secretsmanager:us-east-1:111111111111:secret:masteruser_secret-XbRXX -o /home/ec2-user/scripts/output/pgloadinst.cluster-xxxxxxxxxxxx.us-east-1.rds.amazonaws.com/postgres -r us-east-1
 	```
 
+# Uninstalling Snapper
+
+To uninstall Snapper and delete related AWS resources, follow the steps below.
+
+1. Remove the inbound rule created for the Snapper EC2 host's security group (CloudFormation Logical ID: ```Ec2SecurityGroup```) from the target database's security group (```DBSecurityGroupID``` parameter value which you entered during setting up the stack) by going to [AWS EC2 console](https://console.aws.amazon.com/ec2/home?#SecurityGroups:).
+
+2. Delete the Snapper CloudFormation Stack by going to [AWS CloudFormation console](https://console.aws.amazon.com/cloudformation/home?#/stacks?filteringStatus=active&filteringText=&viewNested=true&hideStacks=false).
+
 # Sample queries for Snapper Data Analysis
 
 Sample queries for snapper data analysis is available in [Github](https://github.com/aws-samples/aurora-and-database-migration-labs/tree/master/Code/PGPerfStatsSnapper/SQLs).
