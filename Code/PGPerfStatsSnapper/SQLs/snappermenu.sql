@@ -48,9 +48,10 @@
 
 \qecho '==TABLE STATS=='
 \qecho ' '
-\qecho 'table_cols.sql      					Details of Table columns '
-\qecho 'table_pk.sql      					Details of Table Primary Key '
-\qecho 'table_fks.sql      					Details of Foreign Keys referencing the Primary Key of the Parent Table '
+\qecho 'table_cols.sql      					Details of Table columns'
+\qecho 'table_pk.sql      					Details of Table Primary Key'
+\qecho 'table_fks.sql      					Details of Foreign Keys referencing the Primary Key of the Parent Table'
+\qecho 'table_options.sql					Table Options for fill factor and Vacumming'
 \qecho 'top_20_tables_by_seq_scans.sql      			Top 20 Tables by number of Sequential or Full scans'
 \qecho 'top_20_tables_by_dmls.sql           			Top 20 Tables by DML activity'
 \qecho 'table_bloat.sql           				Table Bloat Analysis'
