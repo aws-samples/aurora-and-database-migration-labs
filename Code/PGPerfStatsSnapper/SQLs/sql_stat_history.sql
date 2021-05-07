@@ -1,3 +1,5 @@
+--Shared blocks contain data from regular tables and indexes; local blocks contain data from temporary tables and indexes; while temp blocks contain short-term working data used in sorts, hashes, Materialize plan nodes, and similar cases. The number of blocks dirtied indicates the number of previously unmodified blocks that were changed by this query; while the number of blocks written indicates the number of previously-dirtied blocks evicted from cache by this backend during query processing.
+
 \prompt 'Enter queryid (shown in Top x queries reports): ' query_id
 
 select distinct query from pg_stat_statements_history
