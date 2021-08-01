@@ -19,7 +19,7 @@
 \qecho '==INSTANCE AND DATABASE STATS=='
 \qecho ' '
 \qecho 'db_and_schema_sizes.sql                                 Database and Schema Sizes'
-\qecho 'top_20_tables_and_indexes_by_tot_size.sql               Top 20 Tables and Indexes by total Size'
+\qecho 'tables_and_indexes_by_tot_size.sql                      Top 20 Tables and Indexes by total Size'
 \qecho 'cache_hit_ratio.sql                                     Cache hit ratio in a time window'
 \qecho 'db_stats.sql                                            Database Level statistics in a time window'
 \qecho 'checkpoint_stats_by_snap_id.sql                         Checkpoints stats in a time window'
