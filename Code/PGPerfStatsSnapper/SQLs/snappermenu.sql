@@ -43,6 +43,7 @@
 \qecho 'top_20_sqls_by_elapsed_time.sql                         Top 20 queries by Elapsed time in a time window'
 \qecho 'top_10_sqls_by_cpu_by_snap_id.sql                       Top 10 SQL queries by CPU by Snap ID'
 \qecho 'sql_stat_history.sql                                    Execution trend of a query of interest in a time window'
+\qecho 'top_20_functions_by_avg_total_time.sql                  Top 20 functions by average total time in a time window'
 \qecho ' '
 \qecho ' '
 

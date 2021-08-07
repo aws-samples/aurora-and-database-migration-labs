@@ -15,7 +15,7 @@ import subprocess
 
 def getoptions():
     parser = argparse.ArgumentParser(
-        description='Snap PostgreSQL performance statistics and exit',
+        description='Load PostgreSQL performance statistics collected by Snapper and exit',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     parser.add_argument("-e",
@@ -164,13 +164,13 @@ if __name__ == "__main__":
     try:
         ISV_DBNAME = input("Enter Database name to be created for importing PostgreSQL performance statistics:")
     
-        logger.info('Setting up Database for importing pgawr table(s) ...')
+        logger.info('Setting up Database for importing Snapper related table(s) ...')
         runcmd("PGPASSWORD='" + DBPASS + "'" + " /usr/local/pgsql/bin/psql --host=" + DBHOST + " --port=" + DBPORT + " --username=" + DBUSER + " --dbname=" + DBNAME + " --command='" + "CREATE DATABASE " +  ISV_DBNAME + ";'" + " --quiet" + " --echo-errors" + " 2>>" + os.path.join(LOG_DIR,'pg_perf_stat_loader.log'))
-        logger.info('Database ' + ISV_DBNAME + ' created for importing pgawr table(s) ...')
+        logger.info('Database ' + ISV_DBNAME + ' created for importing Snapper related table(s) ...')
     
         ddl_file_name = os.path.join(STAGING_DIR,'all_ddls.sql')
     
-        logger.info('Creating pgawr related table(s) ...')
+        logger.info('Creating Snapper related table(s) ...')
         runcmd("PGPASSWORD='" + DBPASS + "'" + " /usr/local/pgsql/bin/psql --host=" + DBHOST + " --port=" + DBPORT + " --username=" + DBUSER + " --dbname=" + ISV_DBNAME + " --file=" + ddl_file_name + " --quiet" + " --echo-errors" + " 2>>" + os.path.join(LOG_DIR,'pg_perf_stat_loader.log'))
         
     except Exception as e:
@@ -223,8 +223,8 @@ if __name__ == "__main__":
                     else:
                          logger.info('  Skipping file ' + filename + ' since filesize is 0 ...')
                          
-            logger.info('Loading of all pgawr related data completed successfully ...')
-            print('Loading of all pgawr related data completed successfully ...')
+            logger.info('Loading of all Snapper related data completed successfully ...')
+            print('Loading of all Snapper related data completed successfully ...')
                 
         # Commit transaction and Close cursor, connection
         my_connection.commit()

@@ -12,7 +12,7 @@ The snapper script collects and stores the PostgreSQL database metrics in separa
 
 1. When you create a new RDS PostgreSQL database or Aurora PostgreSQL cluster, it comes with default parameter groups, which cannot be updated. If you haven't done it already, create a [custom DB parameter group](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithParamGroups.html) for RDS PostgreSQL and associate it with the RDS instance. For Aurora PostgreSQL, create a [custom cluster parameter group along with a custom DB parameter group](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/USER_WorkingWithParamGroups.html). Associate the cluster parameter group with the Aurora cluster and the DB parameter group with the primary DB instance and the Aurora replicas.
 
-1. Add **pg_stat_statements** to [shared_preload_libraries](https://www.postgresql.org/docs/11/runtime-config-client.html) DB parameter and create required extensions by running the following in the PostgreSQL database where application related objects are stored. 
+1. Add **pg_stat_statements** and **aurora_stat_utils** extensions to [shared_preload_libraries](https://www.postgresql.org/docs/11/runtime-config-client.html) DB parameter and create required extensions by running the following in the PostgreSQL database where application related objects are stored. 
  
 	**Note:**  ```aurora_stat_utils``` extension is valid only for Aurora PostgreSQL.
 	```bash
@@ -21,6 +21,8 @@ The snapper script collects and stores the PostgreSQL database metrics in separa
 	postgres=> create extension pg_stat_statements;
 	postgres=> create extension aurora_stat_utils;
 	```
+
+1. Modify **track_functions** parameter and set to **all** to track procedural-language, SQL and C language functions. This can be set in DB Parameter group for RDS and Aurora.
 
 1. Set **track_activity_query_size** parameter to the max value 102400 to capture the full text of very long SQL statements. This can be set in DB Parameter group for RDS and Cluster Parameter group for Aurora.
 

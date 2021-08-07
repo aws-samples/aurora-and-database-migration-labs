@@ -71,6 +71,13 @@
 			"add_snap_id": 1
 		},
 		{
+			"query": "select * from pg_stat_user_functions",
+			"filename": "pg_stat_user_functions_history.csv",
+			"object": "pg_stat_user_functions",
+			"target": "pg_stat_user_functions_history",
+			"add_snap_id": 1
+		},
+		{
 			"query": "select * from aurora_log_report(5)",
 			"filename": "aurora_log_report_history.csv",
 			"ddl_query": "select * from aurora_log_report(1) where 1=0",
