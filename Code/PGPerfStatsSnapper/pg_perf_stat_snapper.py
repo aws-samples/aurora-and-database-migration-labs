@@ -296,7 +296,7 @@ if __name__ == "__main__":
                         
                         create_view_ddl='CREATE VIEW v_snapper_' + query_block["target"] + ' AS ' + query_str + ";"
                         drop_view_ddl=drop_view_ddl + 'DROP VIEW v_snapper_' + query_block["target"] + ";"
-                        logger.info('   Creating View v_snapper_' + query_block["target"] + ' ...')
+                        logger.info('   Creating temporary View v_snapper_' + query_block["target"] + ' ...')
                         runcmd("PGPASSWORD='" + DBPASS + "'" + " /usr/local/pgsql/bin/psql --host=" + DBHOST + " --port=" + DBPORT + " --username=" + DBUSER + " --dbname=" + DBNAME + " --quiet" + " --echo-errors" + " --command=" + '"' + create_view_ddl + '"' + " 2>>" + os.path.join(LOG_DIR,'pg_perf_stat_snapper.log'))
                         query_str='SELECT * FROM ' + 'v_snapper_' + query_block["target"]
                     

@@ -1,35 +1,33 @@
 # PostgreSQL Performance Stats Snapper
 
-While doing load testing on Amazon RDS/Aurora PostgreSQL for proof of concept (POC) or for testing the impact of any configuration or code change, its important to collect all the database performance related metrics periodically at a certain interval for post analysis.
-RDS Enhanced Monitoring and RDS Performance Insights collect a lot of database performance metrics and provide dashboards for viewing the historical data. There are a lot of other database engine specific performance statistics and metrics, which can be collected to assist with deep dive analysis of performance problems post the load testing.
+While doing load testing on [Amazon RDS](https://aws.amazon.com/rds/postgresql/) and [Amazon Aurora PostgreSQL](https://aws.amazon.com/rds/aurora/postgresql-features/) for proof of concept (POC) or for testing the impact of any configuration or code change, its important to collect all the database performance related metrics periodically at regular intervals so that you can go back in time and do performance analysis. [RDS Enhanced Monitoring](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_Monitoring.OS.html) and [RDS Performance Insights](https://aws.amazon.com/rds/performance-insights/) collect a lot of host and database performance metrics and provide dashboards for viewing the historical data. There are a lot of other database engine specific performance statistics and metrics, which can be collected to assist with deep dive analysis of performance problems post the load testing.
 
-The snapper script provided here enables periodic collection (snapping) of PostgreSQL performance related statistics and metrics. The config file used by the script can be customized to add and remove database dictionary views and queries to be snapped as required.
-The snapper script collects and stores the PostgreSQL database metrics in separate OS level files to have minimal impact on the database. These files can be loaded into another PostgreSQL instance by the loader script for analysis post the load testing.
+The **Snapper** tool provided here enables periodic collection (snapping) of PostgreSQL performance related statistics and metrics. The config file used by the tool can be customized to include database dictionary views and custom queries to be snapped. The Snapper tool collects and dumps the PostgreSQL database metrics in separate physical files on the host its running to have minimal impact on the database. These files can be loaded to another PostgreSQL instance using the loader script included in the tool for analysis.
 
-:warning: You must accept all the risks associated with production use of the **Snapper** tool in regards to unknown/undesirable consequences. If you do not assume all the associated risk, you shouldn't be using this tool.
+:warning: You must accept all the risks associated with production use of the **Snapper** tool in regards to unknown/undesirable consequences. If you do not assume all the associated risks, you shouldn't be using this tool.
 
 ## Prerequisites
 
-1. When you create a new RDS PostgreSQL database or Aurora PostgreSQL cluster, it comes with default parameter groups, which cannot be updated. If you haven't done it already, create a [custom DB parameter group](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithParamGroups.html) for RDS PostgreSQL and associate it with the RDS instance. For Aurora PostgreSQL, create a [custom cluster parameter group along with a custom DB parameter group](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/USER_WorkingWithParamGroups.html). Associate the cluster parameter group with the Aurora cluster and the DB parameter group with the primary DB instance and the Aurora replicas.
+1. When you create a new RDS PostgreSQL database or Aurora PostgreSQL cluster, it comes with default parameter groups, which cannot be updated. For RDS PostgreSQL, create a [custom DB parameter group](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithParamGroups.html) and associate it with the RDS instance. For Aurora PostgreSQL, create a [custom cluster parameter group along with a custom DB parameter group](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/USER_WorkingWithParamGroups.html). Associate the cluster parameter group with the Aurora cluster and the DB parameter group with the primary DB instance and the Aurora replicas.
 
-1. Add **pg_stat_statements** and **aurora_stat_utils** extensions to [shared_preload_libraries](https://www.postgresql.org/docs/11/runtime-config-client.html) DB parameter and create required extensions by running the following in the PostgreSQL database where application related objects are stored. 
+1. Modify [shared_preload_libraries](https://www.postgresql.org/docs/11/runtime-config-client.html) DB parameter and add **pg_stat_statements** extension. This can be set in DB Parameter group for RDS PostgreSQL and Cluster Parameter group for Aurora PostgreSQL. Then create the extensions by running the following command in the PostgreSQL database where application related objects are stored. 
  
-	**Note:**  ```aurora_stat_utils``` extension is valid only for Aurora PostgreSQL.
 	```bash
 	/usr/local/pgsql/bin/psql --host=<PostgreSQL Instance EndPoint> --port=<Port> --username=<Master UserName> --dbname=<Database Name where Application objects are stored>
 
 	postgres=> create extension pg_stat_statements;
-	postgres=> create extension aurora_stat_utils;
 	```
 
-1. Modify **track_functions** parameter and set to **all** to track procedural-language, SQL and C language functions. This can be set in DB Parameter group for RDS and Aurora.
+1. Modify **track_functions** parameter and set to **all** to track procedural-language, SQL and C language functions. This can be set in DB Parameter group for RDS PostgreSQL and Cluster Parameter group for Aurora PostgreSQL.
 
-1. Set **track_activity_query_size** parameter to the max value 102400 to capture the full text of very long SQL statements. This can be set in DB Parameter group for RDS and Cluster Parameter group for Aurora.
+1. Set **track_activity_query_size** parameter to the max value 102400 to capture the full text of very long SQL statements. This can be set in DB Parameter group for RDS PostgreSQL and Cluster Parameter group for Aurora PostgreSQL.
+
+1. **shared_preload_libraries** and **track_activity_query_size** parameters are static. For them to take effect, reboot the database instance.
 
 
 ## Quick Start
 
-1. Click [<img src="media/cloudformation-launch-stack.png">](https://console.aws.amazon.com/cloudformation/home?#/stacks/create/review?stackName=pg-snapper&templateURL=https://auroraworkshopassets.s3-us-west-2.amazonaws.com/templates/pg-snapper/PG_Snapper.yml) to deploy the CloudFormation stack in your AWS account in the region where the PostgreSQL instance to be monitored is running. The CloudFormation stack requires a few parameters, as shown in the following screenshot.
+1. Click [<img src="media/cloudformation-launch-stack.png">](https://console.aws.amazon.com/cloudformation/home?#/stacks/create/review?stackName=pg-snapper&templateURL=https://auroraworkshopassets.s3-us-west-2.amazonaws.com/templates/pg-snapper/PG_Snapper.yml) to deploy the CloudFormation stack in your AWS account in the Region where the PostgreSQL instance to be monitored is running. The CloudFormation stack requires a few parameters, as shown in the following screenshot.
 
 ![](media/cfn-stack-parameters.png)
 
@@ -98,13 +96,13 @@ The CloudFormation stack does the following setup in your AWS Account.
 6. Run the Snapper script manually once using the following command and review the log file generated under "/home/ec2-user/scripts/log/" sub-directory. By default, all the output will be stored under "/home/ec2-user/scripts/output/" sub-directory. If you don't see any error in the log file, proceed to the next step. For further troubleshooting, see the **Troubleshooting** section below.
 
     ```bash
-	/home/ec2-user/scripts/pg_perf_stat_snapper.py -e <PostgreSQL Instance EndPoint> -P <Port> -d <Database Name where Application objects are stored> -u <Master UserName> -s <AWS Secretes Manager ARN. Cloudformation Output Key: PGSnapperSecretARN> -m snap -r <AWS Region>
+	/home/ec2-user/scripts/pg_perf_stat_snapper.py -e <PostgreSQL Instance EndPoint> -P <Port> -d <Database Name where Application objects are stored> -u <Master UserName> -s <AWS Secretes Manager ARN. CloudFormation Output Key: PGSnapperSecretARN> -m snap -r <AWS Region>
 	```
 
 7. Schedule the Snapper script in crontab to run every 1 minute. 
 
 	```bash
-	*/1 * * * * /home/ec2-user/scripts/pg_perf_stat_snapper.py -e <PostgreSQL Instance EndPoint> -P <Port> -d <Database Name where Application objects are stored> -u <Master UserName> -s <AWS Secretes Manager ARN. Cloudformation Output Key: PGSnapperSecretARN> -m snap -r <AWS Region>
+	*/1 * * * * /home/ec2-user/scripts/pg_perf_stat_snapper.py -e <PostgreSQL Instance EndPoint> -P <Port> -d <Database Name where Application objects are stored> -u <Master UserName> -s <AWS Secretes Manager ARN. CloudFormation Output Key: PGSnapperSecretARN> -m snap -r <AWS Region>
 	```
 
 ## Load Test
@@ -123,7 +121,7 @@ The CloudFormation stack does the following setup in your AWS Account.
 
 1. Package the snapper output by running the following:
 	```bash
-	/home/ec2-user/scripts/pg_perf_stat_snapper.py -e <PostgreSQL Instance EndPoint> -P <Port> -d <Database Name where Application objects are stored> -u <Master UserName> -s <AWS Secretes Manager ARN. Cloudformation Output Key: PGSnapperSecretARN> -m package -r <AWS Region>
+	/home/ec2-user/scripts/pg_perf_stat_snapper.py -e <PostgreSQL Instance EndPoint> -P <Port> -d <Database Name where Application objects are stored> -u <Master UserName> -s <AWS Secretes Manager ARN. CloudFormation Output Key: PGSnapperSecretARN> -m package -r <AWS Region>
 	```
 2. Zip the output and log directory, upload to the S3 bucket created by the CloudFormation Stack (CloudFormation Output Key: SnapperS3Bucket) and create a pre-signed URL of the zip file. In the example below ```s3://pg-snapper-output/``` is the bucket used for uploading the zip file.
 	```bash
@@ -133,7 +131,7 @@ The CloudFormation stack does the following setup in your AWS Account.
 	aws s3 cp pg-snapper-output.zip s3://pg-snapper-output/
 	aws s3 presign s3://pg-snapper-output/pg-snapper-output.zip --expires-in 604800
 	```
-3. Share the S3 URL for loading the output and do further analysis.
+3. Share the S3 URL for loading the Snapper output and perform further analysis.
 
 ## Troubleshooting
 

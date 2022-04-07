@@ -26,7 +26,15 @@ Parameters:
     - t3.xlarge
     - t3.large
     ConstraintDescription: Must be a valid EC2 instance type.
-
+  
+  EBSVolSize:
+    Description: PG Snapper EC2 instance EBS Volume Size in GiB
+    Type: Number
+    Default: 30
+    ConstraintDescription: 'Must be in the range 1-16,384'
+    MinValue: 1
+    MaxValue: 16384
+ 
   DBUsername:
     Description: Master User Name for the PostgreSQL Instance to be monitored
     Type: String
@@ -325,7 +333,7 @@ Resources:
       BlockDeviceMappings:
         - DeviceName: /dev/xvda
           Ebs:
-            VolumeSize: 30
+            VolumeSize: !Ref EBSVolSize
       SubnetId: !Ref SubnetID
       SecurityGroupIds: [ !Ref Ec2SecurityGroup ]
       IamInstanceProfile: !Ref ProfileEC2Host

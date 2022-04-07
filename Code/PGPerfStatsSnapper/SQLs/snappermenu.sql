@@ -3,6 +3,9 @@
 \qecho ' '
 \qecho ' '
 
+select split_part(split_part(version(),' ',2),'.',1) as version \gset
+select case when :version >=13 then 1 else 0 end as v2switch \gset
+
 \qecho '==SNAPSHOT DETAILS=='
 \qecho ' '
 \qecho 'list_snaps.sql                                          List snapshots available with time window'
@@ -39,10 +42,19 @@
 
 \qecho '==SQL STATS=='
 \qecho ' '
+\if :v2switch
+\qecho 'top_20_sqls_by_calls_v2.sql                             Top 20 queries by Executions/Calls in a time window'
+\qecho 'top_20_sqls_by_elapsed_time_v2.sql                      Top 20 queries by Elapsed time in a time window'
+\qecho 'top_10_sqls_by_cpu_by_snap_id_v2.sql                    Top 10 SQL queries by CPU by Snap ID'
+\qecho 'sql_stat_history_v2.sql                                 Execution trend of a query of interest in a time window'
+\else
 \qecho 'top_20_sqls_by_calls.sql                                Top 20 queries by Executions/Calls in a time window'
 \qecho 'top_20_sqls_by_elapsed_time.sql                         Top 20 queries by Elapsed time in a time window'
 \qecho 'top_10_sqls_by_cpu_by_snap_id.sql                       Top 10 SQL queries by CPU by Snap ID'
 \qecho 'sql_stat_history.sql                                    Execution trend of a query of interest in a time window'
+\endif
+
+
 \qecho 'top_20_functions_by_avg_total_time.sql                  Top 20 functions by average total time in a time window'
 \qecho ' '
 \qecho ' '
