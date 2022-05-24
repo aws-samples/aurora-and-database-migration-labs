@@ -30,7 +30,7 @@ The **Snapper** tool provided here enables periodic collection (snapping) of Pos
 1. Click [<img src="media/cloudformation-launch-stack.png">](https://console.aws.amazon.com/cloudformation/home?#/stacks/create/review?stackName=pg-snapper&templateURL=https://auroraworkshopassets.s3-us-west-2.amazonaws.com/templates/pg-snapper/PG_Snapper.yml) to deploy the CloudFormation stack in your AWS account in the Region where the PostgreSQL instance to be monitored is running. The CloudFormation stack requires a few parameters, as shown in the following screenshot.
 
 ![](media/cfn-stack-parameters-1.png)
-![](media/cfn-stack-parameters-2.png)
+![](media/cfn-stack-parameters-2.PNG)
 
 | Parameter | Description |
 | --- | --- |
