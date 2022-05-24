@@ -10,7 +10,7 @@ The **Snapper** tool provided here enables periodic collection (snapping) of Pos
 
 1. When you create a new RDS PostgreSQL database or Aurora PostgreSQL cluster, it comes with default parameter groups, which cannot be updated. For RDS PostgreSQL, create a [custom DB parameter group](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithParamGroups.html) and associate it with the RDS instance. For Aurora PostgreSQL, create a [custom cluster parameter group along with a custom DB parameter group](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/USER_WorkingWithParamGroups.html). Associate the cluster parameter group with the Aurora cluster and the DB parameter group with the primary DB instance and the Aurora replicas.
 
-1. Modify [shared_preload_libraries](https://www.postgresql.org/docs/11/runtime-config-client.html) DB parameter and add **pg_stat_statements** extension. This can be set in DB Parameter group for RDS PostgreSQL and Cluster Parameter group for Aurora PostgreSQL. Then create the extensions by running the following command in the PostgreSQL database where application related objects are stored. 
+1. Modify [shared_preload_libraries](https://www.postgresql.org/docs/11/runtime-config-client.html) DB parameter and add **pg_stat_statements** extension. This can be set in DB Parameter group for RDS PostgreSQL and Cluster Parameter group for Aurora PostgreSQL. Then create the extension by running the following command in the PostgreSQL database where application related objects are stored. 
  
 	```bash
 	/usr/local/pgsql/bin/psql --host=<PostgreSQL Instance EndPoint> --port=<Port> --username=<Master UserName> --dbname=<Database Name where Application objects are stored>
@@ -29,7 +29,8 @@ The **Snapper** tool provided here enables periodic collection (snapping) of Pos
 
 1. Click [<img src="media/cloudformation-launch-stack.png">](https://console.aws.amazon.com/cloudformation/home?#/stacks/create/review?stackName=pg-snapper&templateURL=https://auroraworkshopassets.s3-us-west-2.amazonaws.com/templates/pg-snapper/PG_Snapper.yml) to deploy the CloudFormation stack in your AWS account in the Region where the PostgreSQL instance to be monitored is running. The CloudFormation stack requires a few parameters, as shown in the following screenshot.
 
-![](media/cfn-stack-parameters.png)
+![](media/cfn-stack-parameters-1.png)
+![](media/cfn-stack-parameters-2.png)
 
 | Parameter | Description |
 | --- | --- |
@@ -40,6 +41,7 @@ The **Snapper** tool provided here enables periodic collection (snapping) of Pos
 | DBUsername | Master User Name for the PostgreSQL Instance to be monitored |
 | PGMasterUserPassword | Master User Password for the PostgreSQL Instance to be monitored |
 | DBPort | Port for the PostgreSQL Instance to be monitored |
+| EBSVolSize | PG Snapper EC2 instance EBS Volume Size in GiB |
 
 The CloudFormation stack does the following setup in your AWS Account.
 * Stores the database master password in an AWS Secrets Manager secret which Snapper uses to connect to the PostgreSQL instance.
@@ -91,7 +93,7 @@ The CloudFormation stack does the following setup in your AWS Account.
 							AWS region (default: None)
 	```
 
-    Note that if you are specifying the output directory using the -o option, the path needs to be specified as an absolute path for e.g. /home/ec2-user/mysnapperoutput.
+    Note that if you are specifying the output directory using the -o option, the path needs to be specified as an absolute path e.g. /home/ec2-user/mysnapperoutput.
 
 6. Run the Snapper script manually once using the following command and review the log file generated under "/home/ec2-user/scripts/log/" sub-directory. By default, all the output will be stored under "/home/ec2-user/scripts/output/" sub-directory. If you don't see any error in the log file, proceed to the next step. For further troubleshooting, see the **Troubleshooting** section below.
 
@@ -149,7 +151,8 @@ The CloudFormation stack does the following setup in your AWS Account.
 
 To load and analyze the metrics collected by Snapper, follow the steps below.
 
-> **_NOTE:_** You can use the same EC2 instance for running Snapper and Loader Scripts.
+> **_NOTE:_** You can use the same EC2 instance for running Snapper and Loader Scripts. Also you can use the same PostgreSQL instance (where Snapper was executed earlier to collect database metrics) to load the Snapper output. But as a best practice for production workloads, use a separate PostgreSQL instance to load the Snapper output and perform your analysis. The database engine version of the PostgreSQL instance where Snapper output is loaded should be same or higher than the database engine version of the PostgreSQL instance where Snapper output was collected.
+
 
 ## Setup
 
@@ -189,13 +192,15 @@ If you are using the same EC2 instance you used for Snapper, complete the follow
 	unzip snapper-output.zip
 	```
 
-2. Import the snapper output by running the following:
+2. Import the snapper output by running the following command line. For the **-o** parameter, provide the absolute path for the directory under which all the Snapper related .csv output files including all_ddls.sql are stored.
+
+   > **_NOTE:_** If you don't see **all_ddls.sql** in the same directory where all the Snapper related .csv output files are present, it means Snapper packaging was not run previously. Go back to [Packaging the Output](https://github.com/aws-samples/aurora-and-database-migration-labs/blob/master/Code/PGPerfStatsSnapper/README.md#packaging-the-output) section and follow the procedure. 
 
 	```bash
 	/home/ec2-user/scripts/pg_perf_stat_loader.py -e <PostgreSQL Instance EndPoint> -P <Port> -d postgres -u <Master UserName> -s <AWS Secretes Manager ARN. Cloudformation Output Key: PGSnapperSecretARN> -o <Staged snapper output directory> -r <AWS Region>
 	```
 
-	For e.g.
+	e.g.
 
 	```bash
 	/home/ec2-user/scripts/pg_perf_stat_loader.py -e aurorapg.cluster-xxxxxxxxxxx.us-east-1.rds.amazonaws.com -P 5432 -d postgres -u masteruser -s arn:aws:secretsmanager:us-east-1:111111111111:secret:masteruser_secret-XbRXX -o /home/ec2-user/scripts/output/pgloadinst.cluster-xxxxxxxxxxxx.us-east-1.rds.amazonaws.com/postgres -r us-east-1
@@ -205,9 +210,11 @@ If you are using the same EC2 instance you used for Snapper, complete the follow
 
 To uninstall Snapper and delete related AWS resources, follow the steps below.
 
-1. Remove the inbound rule created for the Snapper EC2 host's security group (CloudFormation Logical ID: ```Ec2SecurityGroup```) from the target database's security group (```DBSecurityGroupID``` parameter value which you entered during setting up the stack) by going to [AWS EC2 console](https://console.aws.amazon.com/ec2/home?#SecurityGroups:).
+1. Remove the inbound rule created for the Snapper EC2 host's security group (CloudFormation Logical ID: ```Ec2SecurityGroup```) from the target database's security group (```DBSecurityGroupID``` parameter value which you entered during setting up the stack) using [AWS EC2 console](https://console.aws.amazon.com/ec2/home?#SecurityGroups:).
 
-2. Delete the Snapper CloudFormation Stack by going to [AWS CloudFormation console](https://console.aws.amazon.com/cloudformation/home?#/stacks?filteringStatus=active&filteringText=&viewNested=true&hideStacks=false).
+2. Empty the S3 bucket (CloudFormation Logical ID: ```SnapperS3Bucket```) by following [Emptying a bucket](https://docs.aws.amazon.com/AmazonS3/latest/userguide/empty-bucket.html).
+
+3. Delete the Snapper CloudFormation Stack using [AWS CloudFormation console](https://console.aws.amazon.com/cloudformation/home?#/stacks?filteringStatus=active&filteringText=&viewNested=true&hideStacks=false).
 
 # Sample queries for Snapper Data Analysis
 

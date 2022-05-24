@@ -92,6 +92,11 @@ Resources:
 
   LambdaExecutionRole:
     Type: AWS::IAM::Role
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: "Used to describe all EC2 images."
     Properties:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
@@ -121,13 +126,20 @@ Resources:
             
   AMIInfoFunction:
     Type: AWS::Lambda::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W89
+            reason: "Function only retrieves the appropriate EC2 AMI image. Can be outside VPC."
+          - id: W92
+            reason: "Function is only executed once by CloudFormation Custom resource."
     Properties:
       Code:
         ZipFile: |
           // Map instance architectures to an AMI name pattern
           var archToAMINamePattern = {
               "PV64": "amzn-ami-pv*x86_64-ebs",
-              "HVM64": "amzn2-ami-hvm-2\.0\.*x86_64-gp2",
+              "HVM64": "amzn2-ami-kernel-5\.10-hvm-2\.0\.*x86_64-gp2",
               "HVMG2": "amzn-ami-graphics-hvm*x86_64-ebs*"
           };
           var aws = require("aws-sdk");
@@ -241,6 +253,11 @@ Resources:
       
   PGSnapperSecret:
     Type: AWS::SecretsManager::Secret
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W77
+            reason: "Using Default AWS managed key aws/secretsmanager"
     Properties:
       Name: !Join ['/', ['pg_snapper', !Ref 'AWS::StackName']]
       Description: !Join ['', ['pg_snapper PostgreSQL Master User Secret ', 'for CloudFormation Stack ', !Ref 'AWS::StackName']]
@@ -252,6 +269,15 @@ Resources:
  
   S3Bucket:
     Type: AWS::S3::Bucket
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W51
+            reason: "Access is controlled by IAM user policy created below."
+          - id: W35
+            reason: "Bucket is used temporarily to share Snapper output using S3 presigned URL"
+          - id: W41
+            reason: "Bucket is used temporarily to share Snapper output using S3 presigned URL"
     Properties:
       Tags:
         - Key: Application
@@ -306,10 +332,22 @@ Resources:
 
   Ec2SecurityGroup:
     Type: AWS::EC2::SecurityGroup
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W40
+            reason: "Default egress rule"
+          - id: W5
+            reason: "Default egress rule"
     Properties:
-      GroupName: !Sub "pg-snapper-${AWS::StackName}"
-      GroupDescription: Enables SSH Access to Snapper EC2 Instance
+      GroupDescription: Snapper EC2 host security group
       VpcId: !Ref VPCID
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 0.0.0.0/0
+          Description: Default outbound access for security group
   
   DBSecurityGroupIngress:
     Properties:
@@ -334,6 +372,7 @@ Resources:
         - DeviceName: /dev/xvda
           Ebs:
             VolumeSize: !Ref EBSVolSize
+            VolumeType: gp3
       SubnetId: !Ref SubnetID
       SecurityGroupIds: [ !Ref Ec2SecurityGroup ]
       IamInstanceProfile: !Ref ProfileEC2Host
@@ -369,9 +408,9 @@ Resources:
                 sudo yum -y install openssl-devel >> /debug.log
                 mkdir /home/ec2-user/postgresql
                 cd /home/ec2-user/postgresql
-                curl https://ftp.postgresql.org/pub/source/v12.3/postgresql-12.3.tar.gz -o postgresql-12.3.tar.gz >> /debug.log
-                tar -xvf postgresql-12.3.tar.gz
-                cd postgresql-12.3
+                curl https://ftp.postgresql.org/pub/source/v13.7/postgresql-13.7.tar.gz -o postgresql-13.7.tar.gz >> /debug.log
+                tar -xvf postgresql-13.7.tar.gz
+                cd postgresql-13.7
                 sudo ./configure --with-openssl >> /debug.log
                 sudo make -C src/bin install >> /debug.log
                 sudo make -C src/include install >> /debug.log

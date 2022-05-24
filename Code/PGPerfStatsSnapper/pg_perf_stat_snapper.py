@@ -10,7 +10,7 @@ from pgdb import connect
 from botocore.exceptions import ClientError
 import json
 import os
-import subprocess
+import subprocess #nosec B404
 import fileinput
 
 
@@ -66,8 +66,6 @@ def getoptions():
 def get_secret(secret_arn,region_name):
     
     logger = logging.getLogger("Snapper")
-    
-    #logger.info('Inside get_secret function...')
 
     # Create a Secrets Manager client
     session = boto3.session.Session()
@@ -96,17 +94,15 @@ def get_secret(secret_arn,region_name):
         secret = json.loads(get_secret_value_response['SecretString'])['password']
         return secret
 
-def runcmd(command):
+def runcmd(command,secret):
     
     logger = logging.getLogger("Snapper")
     
-    #logger.info('Inside runcmd function...')
-    
-    #return subprocess.call(command, shell=True)
     try:
-        return subprocess.check_call(command, stderr=subprocess.STDOUT, shell=True)
+        return subprocess.check_call(command, stderr=subprocess.STDOUT, shell=True) #nosec B602
     except Exception as e:
-        logger.error('Exception: ' + str(e))
+        logger.error('Exception: ' + str(e).replace(secret,'*******'))
+        sys.exit()
     
     
 if __name__ == "__main__":
@@ -174,7 +170,7 @@ if __name__ == "__main__":
         logger.info('SUCCESS: Connection to PostgreSQL instance ' + HOSTPORT + '/' + DBNAME + ' succeeded')
     
     except Exception as e:
-        logger.error('Exception: ' + str(e))
+        logger.error('Exception: ' + str(e).replace(DBPASS,'*******'))
         logger.error("ERROR: Unexpected error: Couldn't connect to the PostgreSQL instance.")
         sys.exit()
     
@@ -213,7 +209,7 @@ if __name__ == "__main__":
                     logger.info('+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++')
                     sys.exit()
                 else:
-                    runcmd("/bin/touch " + RUNNING_FILE)
+                    runcmd("/bin/touch " + RUNNING_FILE,DBPASS)
                 
                 snap_md_fname=os.path.join(OUTPUT_DIR,'pg_awr_snapshots.csv')
                 
@@ -297,8 +293,8 @@ if __name__ == "__main__":
                         create_view_ddl='CREATE VIEW v_snapper_' + query_block["target"] + ' AS ' + query_str + ";"
                         drop_view_ddl=drop_view_ddl + 'DROP VIEW v_snapper_' + query_block["target"] + ";"
                         logger.info('   Creating temporary View v_snapper_' + query_block["target"] + ' ...')
-                        runcmd("PGPASSWORD='" + DBPASS + "'" + " /usr/local/pgsql/bin/psql --host=" + DBHOST + " --port=" + DBPORT + " --username=" + DBUSER + " --dbname=" + DBNAME + " --quiet" + " --echo-errors" + " --command=" + '"' + create_view_ddl + '"' + " 2>>" + os.path.join(LOG_DIR,'pg_perf_stat_snapper.log'))
-                        query_str='SELECT * FROM ' + 'v_snapper_' + query_block["target"]
+                        runcmd("PGPASSWORD='" + DBPASS + "'" + " /usr/local/pgsql/bin/psql --host=" + DBHOST + " --port=" + DBPORT + " --username=" + DBUSER + " --dbname=" + DBNAME + " --quiet" + " --echo-errors" + " --command=" + '"' + create_view_ddl + '"' + " 2>>" + os.path.join(LOG_DIR,'pg_perf_stat_snapper.log'),DBPASS)
+                        query_str='SELECT * FROM ' + 'v_snapper_' + query_block["target"] #nosec B608
                     
                     # If PG version >= 12 then oid is already included as a visible column for pg_class and pg_namespace
                     if pg_ver >= 12:
@@ -380,7 +376,7 @@ if __name__ == "__main__":
                 # Extract DDL using the DDL generation input file 
                 logger.info('  Extracting all DDLs ...')
                 
-                runcmd("PGPASSWORD='" + DBPASS + "'" + " /usr/local/pgsql/bin/psql --host=" + DBHOST + " --port=" + DBPORT + " --username=" + DBUSER + " --dbname=" + DBNAME + " --file=" + ddl_gen_file_name + " --quiet" + " --echo-errors" + " 2>>" + os.path.join(LOG_DIR,'pg_perf_stat_snapper.log'))
+                runcmd("PGPASSWORD='" + DBPASS + "'" + " /usr/local/pgsql/bin/psql --host=" + DBHOST + " --port=" + DBPORT + " --username=" + DBUSER + " --dbname=" + DBNAME + " --file=" + ddl_gen_file_name + " --quiet" + " --echo-errors" + " 2>>" + os.path.join(LOG_DIR,'pg_perf_stat_snapper.log'),DBPASS)
                 
                 # delete DDL extraction input file
                 os.remove(ddl_gen_file_name)
@@ -419,7 +415,7 @@ if __name__ == "__main__":
             
             if drop_view_ddl:
                 logger.info('   Dropping temporary Views created by Snapper' + ' ...')
-                runcmd("PGPASSWORD='" + DBPASS + "'" + " /usr/local/pgsql/bin/psql --host=" + DBHOST + " --port=" + DBPORT + " --username=" + DBUSER + " --dbname=" + DBNAME + " --quiet" + " --echo-errors" + " --command=" + '"' + drop_view_ddl + '"' + " 2>>" + os.path.join(LOG_DIR,'pg_perf_stat_snapper.log'))
+                runcmd("PGPASSWORD='" + DBPASS + "'" + " /usr/local/pgsql/bin/psql --host=" + DBHOST + " --port=" + DBPORT + " --username=" + DBUSER + " --dbname=" + DBNAME + " --quiet" + " --echo-errors" + " --command=" + '"' + drop_view_ddl + '"' + " 2>>" + os.path.join(LOG_DIR,'pg_perf_stat_snapper.log'),DBPASS)
                     
     except Exception as e:
-        logger.error('Exception: ' + str(e))
+        logger.error('Exception: ' + str(e).replace(DBPASS,'*******'))

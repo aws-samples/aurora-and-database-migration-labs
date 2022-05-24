@@ -10,7 +10,7 @@ from pgdb import connect
 from botocore.exceptions import ClientError
 import json
 import os
-import subprocess
+import subprocess #nosec B404
 
 
 def getoptions():
@@ -88,15 +88,15 @@ def get_secret(secret_arn,region_name):
         secret = json.loads(get_secret_value_response['SecretString'])['password']
         return secret
 
-def runcmd(command):
+def runcmd(command,secret):
     
     logger = logging.getLogger("Loader")
     
-    #return subprocess.call(command, shell=True)
     try:
-        return subprocess.check_call(command, stderr=subprocess.STDOUT, shell=True)
+        return subprocess.check_call(command, stderr=subprocess.STDOUT, shell=True) #nosec B602
     except Exception as e:
-        logger.error('Exception: ' + str(e))
+        logger.error('Exception: ' + str(e).replace(secret,'*******'))
+        sys.exit()
     
     
 if __name__ == "__main__":
@@ -165,16 +165,20 @@ if __name__ == "__main__":
         ISV_DBNAME = input("Enter Database name to be created for importing PostgreSQL performance statistics:")
     
         logger.info('Setting up Database for importing Snapper related table(s) ...')
-        runcmd("PGPASSWORD='" + DBPASS + "'" + " /usr/local/pgsql/bin/psql --host=" + DBHOST + " --port=" + DBPORT + " --username=" + DBUSER + " --dbname=" + DBNAME + " --command='" + "CREATE DATABASE " +  ISV_DBNAME + ";'" + " --quiet" + " --echo-errors" + " 2>>" + os.path.join(LOG_DIR,'pg_perf_stat_loader.log'))
+        runcmd("PGPASSWORD='" + DBPASS + "'" + " /usr/local/pgsql/bin/psql --host=" + DBHOST + " --port=" + DBPORT + " --username=" + DBUSER + " --dbname=" + DBNAME + " --command='" + "CREATE DATABASE " +  ISV_DBNAME + ";'" + " --quiet" + " --echo-errors" + " 2>>" + os.path.join(LOG_DIR,'pg_perf_stat_loader.log'),DBPASS)
         logger.info('Database ' + ISV_DBNAME + ' created for importing Snapper related table(s) ...')
     
         ddl_file_name = os.path.join(STAGING_DIR,'all_ddls.sql')
+        
+        if not os.path.exists(ddl_file_name):
+            logger.error('DDL file ' + ddl_file_name + ' not found. Check if Snapper packaging was run following https://github.com/aws-samples/aurora-and-database-migration-labs/blob/master/Code/PGPerfStatsSnapper/README.md#packaging-the-output')
+            sys.exit()
     
         logger.info('Creating Snapper related table(s) ...')
-        runcmd("PGPASSWORD='" + DBPASS + "'" + " /usr/local/pgsql/bin/psql --host=" + DBHOST + " --port=" + DBPORT + " --username=" + DBUSER + " --dbname=" + ISV_DBNAME + " --file=" + ddl_file_name + " --quiet" + " --echo-errors" + " 2>>" + os.path.join(LOG_DIR,'pg_perf_stat_loader.log'))
+        runcmd("PGPASSWORD='" + DBPASS + "'" + " /usr/local/pgsql/bin/psql --host=" + DBHOST + " --port=" + DBPORT + " --username=" + DBUSER + " --dbname=" + ISV_DBNAME + " --file=" + ddl_file_name + " --quiet" + " --echo-errors" + " 2>>" + os.path.join(LOG_DIR,'pg_perf_stat_loader.log'),DBPASS)
         
     except Exception as e:
-        logger.error('Exception: ' + str(e))
+        logger.error('Exception: ' + str(e).replace(DBPASS,'*******'))
         logger.error("ERROR: Unexpected error: Couldn't run DCL/DDL statements in the PostgreSQL instance.")
         sys.exit()
     
@@ -184,7 +188,7 @@ if __name__ == "__main__":
         logger.info('SUCCESS: Connection to PostgreSQL instance ' + HOSTPORT + '/' + ISV_DBNAME + ' succeeded')
         
     except Exception as e:
-        logger.error('Exception: ' + str(e))
+        logger.error('Exception: ' + str(e).replace(DBPASS,'*******'))
         logger.error("ERROR: Unexpected error: Couldn't connect to the PostgreSQL instance.")
         sys.exit()
     
