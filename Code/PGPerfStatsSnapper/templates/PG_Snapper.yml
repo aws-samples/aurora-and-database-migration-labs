@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: PostgreSQL Snapper Setup
+Description: PostgreSQL Snapper (PGSnapper) Setup
 
 Parameters:
 
@@ -16,7 +16,7 @@ Parameters:
     Type: AWS::EC2::SecurityGroup::Id
     
   InstanceType:
-    Description: PG Snapper EC2 instance type
+    Description: PGSnapper EC2 instance type
     Type: String
     Default: t3.medium
     AllowedValues:
@@ -28,7 +28,7 @@ Parameters:
     ConstraintDescription: Must be a valid EC2 instance type.
   
   EBSVolSize:
-    Description: PG Snapper EC2 instance EBS Volume Size in GiB
+    Description: PGSnapper EC2 instance EBS Volume Size in GiB
     Type: Number
     Default: 30
     ConstraintDescription: 'Must be in the range 1-16,384'
@@ -259,8 +259,8 @@ Resources:
           - id: W77
             reason: "Using Default AWS managed key aws/secretsmanager"
     Properties:
-      Name: !Join ['/', ['pg_snapper', !Ref 'AWS::StackName']]
-      Description: !Join ['', ['pg_snapper PostgreSQL Master User Secret ', 'for CloudFormation Stack ', !Ref 'AWS::StackName']]
+      Name: !Join ['/', ['PGSnapper', !Ref 'AWS::StackName']]
+      Description: !Join ['', ['PGSnapper PostgreSQL Master User Secret ', 'for CloudFormation Stack ', !Ref 'AWS::StackName']]
       Tags:
         -
           Key: StackID
@@ -275,13 +275,13 @@ Resources:
           - id: W51
             reason: "Access is controlled by IAM user policy created below."
           - id: W35
-            reason: "Bucket is used temporarily to share Snapper output using S3 presigned URL"
+            reason: "Bucket is used temporarily to share PGSnapper output using S3 presigned URL"
           - id: W41
-            reason: "Bucket is used temporarily to share Snapper output using S3 presigned URL"
+            reason: "Bucket is used temporarily to share PGSnapper output using S3 presigned URL"
     Properties:
       Tags:
         - Key: Application
-          Value: !Sub "PostgreSQL Snapper https://github.com/aws-samples/aurora-and-database-migration-labs/tree/master/Code/PGPerfStatsSnapper"
+          Value: !Sub "PGSnapper https://github.com/aws-samples/aurora-and-database-migration-labs/tree/master/Code/PGPerfStatsSnapper"
 
   EC2Role:
     Type: AWS::IAM::Role
@@ -340,7 +340,7 @@ Resources:
           - id: W5
             reason: "Default egress rule"
     Properties:
-      GroupDescription: Snapper EC2 host security group
+      GroupDescription: PGSnapper EC2 host security group
       VpcId: !Ref VPCID
       SecurityGroupEgress:
         - IpProtocol: -1
@@ -356,7 +356,7 @@ Resources:
       FromPort: !Ref DBPort
       ToPort: !Ref DBPort
       SourceSecurityGroupId: !Ref Ec2SecurityGroup
-      Description: 'PG Snapper EC2 host access'
+      Description: 'PGSnapper EC2 host access'
     Type: 'AWS::EC2::SecurityGroupIngress'
       
   SnapperInstance:
@@ -378,7 +378,7 @@ Resources:
       IamInstanceProfile: !Ref ProfileEC2Host
       Tags:
         - Key: Name
-          Value: !Sub "pg-snapper-${AWS::StackName}"
+          Value: !Sub "PGSnapper-${AWS::StackName}"
       UserData:
         Fn::Base64:
           Fn::Join:
@@ -429,7 +429,7 @@ Resources:
                 echo "$(date "+%F %T") * Finished installing Python packages" >> /debug.log           
                 
                 # Install required Python packages
-                echo "$(date "+%F %T") * Downloading PG Snapper scripts" >> /debug.log           
+                echo "$(date "+%F %T") * Downloading PGSnapper scripts" >> /debug.log           
                 mkdir -p /home/ec2-user/scripts
                 cd /home/ec2-user/scripts
                 curl -L https://raw.githubusercontent.com/aws-samples/aurora-and-database-migration-labs/master/Code/PGPerfStatsSnapper/pg_perf_stat_snapper.py -o pg_perf_stat_snapper.py
@@ -438,23 +438,23 @@ Resources:
                 chown -R ec2-user:ec2-user /home/ec2-user/scripts
                 chmod 755 pg_perf_stat_snapper.py
                 chmod 755 pg_perf_stat_loader.py
-                echo "$(date "+%F %T") * Finished downloading PG Snapper scripts" >> /debug.log           
+                echo "$(date "+%F %T") * Finished downloading PGSnapper scripts" >> /debug.log           
                 
 Outputs:
 
-  AMIID:
-    Description: The Amazon EC2 instance AMI ID
+  PGSnapperEC2InstAMIID:
+    Description: PGSnapper EC2 instance AMI ID
     Value: !GetAtt AMIInfo.Id
    
-  EC2InstanceID:
-    Description: EC2 Instance ID for PG Snapper
+  PGSnapperEC2InstID:
+    Description: EC2 Instance ID for PGSnapper
     Value: !Ref SnapperInstance
     
   PGSnapperSecretARN:
     Description: Master User Secret ARN for the PostgreSQL Instance to be monitored
     Value: !Ref PGSnapperSecret
     
-  SnapperS3Bucket:
-    Description: S3 bucket to store PG Snapper output for sharing
+  PGSnapperS3Bucket:
+    Description: S3 bucket to store PGSnapper output for sharing
     Value: !Join ['', ['s3://', !Ref S3Bucket, '/']] 
   

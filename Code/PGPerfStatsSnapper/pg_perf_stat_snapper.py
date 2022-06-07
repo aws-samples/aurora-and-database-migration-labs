@@ -199,13 +199,13 @@ if __name__ == "__main__":
             
             if MODE == 'snap':
                 
-                # Create snapper running file to prevent concurrent script runs for same host and database combination
+                # Create PGSnapper running file to prevent concurrent script runs for same host and database combination
                 RUNNING_FILE=os.path.join(os.path.dirname(__file__),'.snapper_' + DBHOST + '_' + DBNAME + '.running')
     
                 if os.path.exists(RUNNING_FILE):
                     
                     logger.info('+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++')
-                    logger.error("ERROR: Another instance of snapper is already running for the same DBHOST and database. Exiting ... ")
+                    logger.error("ERROR: Another instance of PGSnapper is already running for the same DBHOST and database. Exiting ... ")
                     logger.info('+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++')
                     sys.exit()
                 else:
@@ -414,7 +414,7 @@ if __name__ == "__main__":
             my_connection.close()
             
             if drop_view_ddl:
-                logger.info('   Dropping temporary Views created by Snapper' + ' ...')
+                logger.info('   Dropping temporary Views created by PGSnapper' + ' ...')
                 runcmd("PGPASSWORD='" + DBPASS + "'" + " /usr/local/pgsql/bin/psql --host=" + DBHOST + " --port=" + DBPORT + " --username=" + DBUSER + " --dbname=" + DBNAME + " --quiet" + " --echo-errors" + " --command=" + '"' + drop_view_ddl + '"' + " 2>>" + os.path.join(LOG_DIR,'pg_perf_stat_snapper.log'),DBPASS)
                     
     except Exception as e:

@@ -15,7 +15,7 @@ import subprocess #nosec B404
 
 def getoptions():
     parser = argparse.ArgumentParser(
-        description='Load PostgreSQL performance statistics collected by Snapper and exit',
+        description='Load PostgreSQL performance statistics collected by PGSnapper and exit',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     parser.add_argument("-e",
@@ -45,7 +45,7 @@ def getoptions():
                         
     parser.add_argument("-o",
                         "--stagingdir",
-                        help="Directory containing the snapper generated csv files",
+                        help="Directory containing the PGSnapper generated csv files",
                         required=True)                      
                         
     parser.add_argument("-r",
@@ -164,17 +164,17 @@ if __name__ == "__main__":
     try:
         ISV_DBNAME = input("Enter Database name to be created for importing PostgreSQL performance statistics:")
     
-        logger.info('Setting up Database for importing Snapper related table(s) ...')
+        logger.info('Setting up Database for importing PGSnapper related table(s) ...')
         runcmd("PGPASSWORD='" + DBPASS + "'" + " /usr/local/pgsql/bin/psql --host=" + DBHOST + " --port=" + DBPORT + " --username=" + DBUSER + " --dbname=" + DBNAME + " --command='" + "CREATE DATABASE " +  ISV_DBNAME + ";'" + " --quiet" + " --echo-errors" + " 2>>" + os.path.join(LOG_DIR,'pg_perf_stat_loader.log'),DBPASS)
-        logger.info('Database ' + ISV_DBNAME + ' created for importing Snapper related table(s) ...')
+        logger.info('Database ' + ISV_DBNAME + ' created for importing PGSnapper related table(s) ...')
     
         ddl_file_name = os.path.join(STAGING_DIR,'all_ddls.sql')
         
         if not os.path.exists(ddl_file_name):
-            logger.error('DDL file ' + ddl_file_name + ' not found. Check if Snapper packaging was run following https://github.com/aws-samples/aurora-and-database-migration-labs/blob/master/Code/PGPerfStatsSnapper/README.md#packaging-the-output')
+            logger.error('DDL file ' + ddl_file_name + ' not found. Check if PGSnapper packaging was run following https://github.com/aws-samples/aurora-and-database-migration-labs/blob/master/Code/PGPerfStatsSnapper/README.md#packaging-the-output')
             sys.exit()
     
-        logger.info('Creating Snapper related table(s) ...')
+        logger.info('Creating PGSnapper related table(s) ...')
         runcmd("PGPASSWORD='" + DBPASS + "'" + " /usr/local/pgsql/bin/psql --host=" + DBHOST + " --port=" + DBPORT + " --username=" + DBUSER + " --dbname=" + ISV_DBNAME + " --file=" + ddl_file_name + " --quiet" + " --echo-errors" + " 2>>" + os.path.join(LOG_DIR,'pg_perf_stat_loader.log'),DBPASS)
         
     except Exception as e:
@@ -227,8 +227,8 @@ if __name__ == "__main__":
                     else:
                          logger.info('  Skipping file ' + filename + ' since filesize is 0 ...')
                          
-            logger.info('Loading of all Snapper related data completed successfully ...')
-            print('Loading of all Snapper related data completed successfully ...')
+            logger.info('Loading of all PGSnapper related data completed successfully ...')
+            print('Loading of all PGSnapper related data completed successfully ...')
                 
         # Commit transaction and Close cursor, connection
         my_connection.commit()

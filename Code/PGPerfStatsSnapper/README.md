@@ -1,10 +1,10 @@
-# PostgreSQL Performance Stats Snapper
+# PostgreSQL Performance Stats Snapper (PGSnapper)
 
 While doing load testing on [Amazon RDS](https://aws.amazon.com/rds/postgresql/) and [Amazon Aurora PostgreSQL](https://aws.amazon.com/rds/aurora/postgresql-features/) for proof of concept (POC) or for testing the impact of any configuration or code change, its important to collect all the database performance related metrics periodically at regular intervals so that you can go back in time and do performance analysis. [RDS Enhanced Monitoring](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_Monitoring.OS.html) and [RDS Performance Insights](https://aws.amazon.com/rds/performance-insights/) collect a lot of host and database performance metrics and provide dashboards for viewing the historical data. There are a lot of other database engine specific performance statistics and metrics, which can be collected to assist with deep dive analysis of performance problems post the load testing.
 
-The **Snapper** tool provided here enables periodic collection (snapping) of PostgreSQL performance related statistics and metrics. The config file used by the tool can be customized to include database dictionary views and custom queries to be snapped. The Snapper tool collects and dumps the PostgreSQL database metrics in separate physical files on the host its running to have minimal impact on the database. These files can be loaded to another PostgreSQL instance using the loader script included in the tool for analysis.
+The **PGSnapper** tool provided here enables periodic collection (snapping) of PostgreSQL performance related statistics and metrics. The config file used by the tool can be customized to include database dictionary views and custom queries to be snapped.  PGSnapper collects and dumps the PostgreSQL database metrics in separate physical files on the host its running to have minimal impact on the database. These files can be loaded to another PostgreSQL instance using the loader script included in the tool for analysis.
 
-:warning: You must accept all the risks associated with production use of the **Snapper** tool in regards to unknown/undesirable consequences. If you do not assume all the associated risks, you shouldn't be using this tool.
+:warning: You must accept all the risks associated with production use of **PGSnapper** in regards to unknown/undesirable consequences. If you do not assume all the associated risks, you shouldn't be using this tool.
 
 ## Prerequisites
 
@@ -37,23 +37,23 @@ The **Snapper** tool provided here enables periodic collection (snapping) of Pos
 | VPCID | VPC ID of PostgreSQL database instance (e.g., vpc-0343606e) to be monitored |
 | SubnetID | VPC Subnet ID of the PostgreSQL database instance (e.g., subnet-a0246dcd) to be monitored |
 | DBSecurityGroupID | Security Group ID of the PostgreSQL database instance (e.g., sg-8c14mg64) to be monitored |
-| InstanceType | PG Snapper EC2 instance type. Leave the default value |
+| InstanceType | PGSnapper EC2 instance type. Leave the default value |
 | DBUsername | Master User Name for the PostgreSQL Instance to be monitored |
 | PGMasterUserPassword | Master User Password for the PostgreSQL Instance to be monitored |
 | DBPort | Port for the PostgreSQL Instance to be monitored |
-| EBSVolSize | PG Snapper EC2 instance EBS Volume Size in GiB |
+| EBSVolSize | PGSnapper EC2 instance EBS Volume Size in GiB |
 
 The CloudFormation stack does the following setup in your AWS Account.
-* Stores the database master password in an AWS Secrets Manager secret which Snapper uses to connect to the PostgreSQL instance.
+* Stores the database master password in an AWS Secrets Manager secret which PGSnapper uses to connect to the PostgreSQL instance.
 * Creates an EC2 instance with the latest Amazon Linux 2 AMI and deploys it in the same VPC and Subnet as the PostgreSQL database instance.
-* Bootstraps the EC2 instance by installing AWS Systems Manager(SSM) agent, PostgreSQL Client, required Python packages and staging the Snapper scripts.
-* Creates an S3 bucket which you can use for storing and sharing Snapper output.
+* Bootstraps the EC2 instance by installing AWS Systems Manager(SSM) agent, PostgreSQL Client, required Python packages and staging PGSnapper scripts.
+* Creates an S3 bucket which you can use for storing and sharing PGSnapper output.
 * Adds the security group for the EC2 instance to the security group assigned to the PostgreSQL instance for inbound network access.
 
 
-2. Once the CloudFormation stack setup is complete, click the **Outputs** tab to note down the resources that you will need for running Snapper.
+2. Once the CloudFormation stack setup is complete, click the **Outputs** tab to note down the resources that you will need for running PGSnapper.
 
-3. Select the EC2 instance (CloudFormation Output Key: EC2InstanceID) in EC2 Dashboard and click **Connect**. Click on **Session Manager** and click **Connect** again.
+3. Select the EC2 instance (CloudFormation Output Key: PGSnapperEC2InstID) in EC2 Dashboard and click **Connect**. Click on **Session Manager** and click **Connect** again.
 
 ![](media/Session-Manager.png)
 
@@ -63,7 +63,7 @@ The CloudFormation stack does the following setup in your AWS Account.
 	sudo su -l ec2-user
 	```
 
-5. Review the Snapper script usage by running the following command. 
+5. Review PGSnapper usage by running the following command. 
 
 	```bash
 	[ec2-user@ip-172-31-14-11 ~]$ /home/ec2-user/scripts/pg_perf_stat_snapper.py -h
@@ -95,13 +95,13 @@ The CloudFormation stack does the following setup in your AWS Account.
 
     Note that if you are specifying the output directory using the -o option, the path needs to be specified as an absolute path e.g. /home/ec2-user/mysnapperoutput.
 
-6. Run the Snapper script manually once using the following command and review the log file generated under "/home/ec2-user/scripts/log/" sub-directory. By default, all the output will be stored under "/home/ec2-user/scripts/output/" sub-directory. If you don't see any error in the log file, proceed to the next step. For further troubleshooting, see the **Troubleshooting** section below.
+6. Run PGSnapper manually once using the following command and review the log file generated under "/home/ec2-user/scripts/log/" sub-directory. By default, all the output will be stored under "/home/ec2-user/scripts/output/" sub-directory. If you don't see any error in the log file, proceed to the next step. For further troubleshooting, see the **Troubleshooting** section below.
 
     ```bash
 	/home/ec2-user/scripts/pg_perf_stat_snapper.py -e <PostgreSQL Instance EndPoint> -P <Port> -d <Database Name where Application objects are stored> -u <Master UserName> -s <AWS Secretes Manager ARN. CloudFormation Output Key: PGSnapperSecretARN> -m snap -r <AWS Region>
 	```
 
-7. Schedule the Snapper script in crontab to run every 1 minute. 
+7. Schedule PGSnapper in crontab to run every 1 minute. 
 
 	```bash
 	*/1 * * * * /home/ec2-user/scripts/pg_perf_stat_snapper.py -e <PostgreSQL Instance EndPoint> -P <Port> -d <Database Name where Application objects are stored> -u <Master UserName> -s <AWS Secretes Manager ARN. CloudFormation Output Key: PGSnapperSecretARN> -m snap -r <AWS Region>
@@ -115,17 +115,17 @@ The CloudFormation stack does the following setup in your AWS Account.
 
 	postgres=> SELECT pg_stat_statements_reset();
 	```
-1. Perform Load test after the snapper script is scheduled in crontab.
+1. Perform Load test after PGSnapper is scheduled in crontab.
 
-1. Once load test is complete, comment out crontab to disable the snapper scheduled runs.
+1. Once load test is complete, comment out crontab to disable PGSnapper scheduled runs.
 
 ## Packaging the Output
 
-1. Package the snapper output by running the following:
+1. Package PGSnapper output by running the following:
 	```bash
 	/home/ec2-user/scripts/pg_perf_stat_snapper.py -e <PostgreSQL Instance EndPoint> -P <Port> -d <Database Name where Application objects are stored> -u <Master UserName> -s <AWS Secretes Manager ARN. CloudFormation Output Key: PGSnapperSecretARN> -m package -r <AWS Region>
 	```
-2. Zip the output and log directory, upload to the S3 bucket created by the CloudFormation Stack (CloudFormation Output Key: SnapperS3Bucket) and create a pre-signed URL of the zip file. In the example below ```s3://pg-snapper-output/``` is the bucket used for uploading the zip file.
+2. Zip the output and log directory, upload to the S3 bucket created by the CloudFormation Stack (CloudFormation Output Key: PGSnapperS3Bucket) and create a pre-signed URL of the zip file. In the example below ```s3://pg-snapper-output/``` is the bucket used for uploading the zip file.
 	```bash
 	cd /home/ec2-user/scripts
 	zip -r pg-snapper-output output
@@ -133,34 +133,34 @@ The CloudFormation stack does the following setup in your AWS Account.
 	aws s3 cp pg-snapper-output.zip s3://pg-snapper-output/
 	aws s3 presign s3://pg-snapper-output/pg-snapper-output.zip --expires-in 604800
 	```
-3. Share the S3 URL for loading the Snapper output and perform further analysis.
+3. Share the S3 URL for loading PGSnapper output and perform further analysis.
 
 ## Troubleshooting
 
-1. If you are seeing the error message "ERROR: Unexpected error: Couldn't connect to the PostgreSQL instance." while running Snapper, the stored password in AWS Secrets Manager secret might not be correct. You can view the password by going to [AWS Secrets Manager console](https://console.aws.amazon.com/secretsmanager/home?#/listSecrets), selecting the secret created by CloudFormation (CloudFormation Output Key: PGSnapperSecretARN) and selecting **Retrieve secret value**. Try to logon to the PostgreSQL database using the retrieved password as follows and see if you are able to connect to it. If the password is incorrect, you can edit the password stored in AWS Secrets Manager secret by selecting the **Edit** button on the same page.
+1. If you are seeing the error message "ERROR: Unexpected error: Couldn't connect to the PostgreSQL instance." while running PGSnapper, the stored password in AWS Secrets Manager secret might not be correct. You can view the password by going to [AWS Secrets Manager console](https://console.aws.amazon.com/secretsmanager/home?#/listSecrets), selecting the secret created by CloudFormation (CloudFormation Output Key: PGSnapperSecretARN) and selecting **Retrieve secret value**. Try to logon to the PostgreSQL database using the retrieved password as follows and see if you are able to connect to it. If the password is incorrect, you can edit the password stored in AWS Secrets Manager secret by selecting the **Edit** button on the same page.
 
     ```bash
 	/usr/local/pgsql/bin/psql --host=<PostgreSQL Instance EndPoint> --port=<Port> --username=<Master UserName> --dbname=<Database Name where Application objects are stored>
 	```
 
-2. If you are seeing the error message "ERROR: Another instance of snapper is already running for the same DBHOST and database. Exiting ..." while running Snapper, this means that another instance of snapper is already running for the same PostgreSQL database or Snapper was terminated abnormally during the previous run. Snapper creates a hidden file under "/home/ec2-user/scripts/" sub-directory to make sure only one instance of Snapper is running at a time for a particular PostgreSQL database. The file name is in the format ".snapper_\<DBHOST\>_\<DBNAME\>.running". If snapper was killed abnormally for some reason and the ".running" file was not deleted, you need to delete this file manually before you can re-run Snapper.
+2. If you are seeing the error message "ERROR: Another instance of PGSnapper is already running for the same DBHOST and database. Exiting ..." while running PGSnapper, this means that another instance of PGSnapper is already running for the same PostgreSQL database or PGSnapper was terminated abnormally during the previous run. PGSnapper creates a hidden file under "/home/ec2-user/scripts/" sub-directory to make sure only one instance of PGSnapper is running at a time for a particular PostgreSQL database. The file name is in the format ".snapper_\<DBHOST\>_\<DBNAME\>.running". If PGSnapper was killed abnormally for some reason and the ".running" file was not deleted, you need to delete this file manually before you can re-run PGSnapper.
 
-3. To debug any other issue with snapper, review the log file stored under "/home/ec2-user/scripts/log/" sub-directory.
+3. To debug any other issue with PGSnapper, review the log file stored under "/home/ec2-user/scripts/log/" sub-directory.
 
 # PostgreSQL Performance Stats Loader
 
-To load and analyze the metrics collected by Snapper, follow the steps below.
+To load and analyze the metrics collected by PGSnapper, follow the steps below.
 
-> **_NOTE:_** You can use the same EC2 instance for running Snapper and Loader Scripts. Also you can use the same PostgreSQL instance (where Snapper was executed earlier to collect database metrics) to load the Snapper output. But as a best practice for production workloads, use a separate PostgreSQL instance to load the Snapper output and perform your analysis. The database engine version of the PostgreSQL instance where Snapper output is loaded should be same or higher than the database engine version of the PostgreSQL instance where Snapper output was collected.
+> **_NOTE:_** You can use the same EC2 instance for running PGSnapper and Loader Scripts. Also you can use the same PostgreSQL instance (where PGSnapper was executed earlier to collect database metrics) to load PGSnapper output. But as a best practice for production workloads, use a separate PostgreSQL instance to load PGSnapper output and perform your analysis.
 
 
 ## Setup
 
-Follow the Quick Start above if you want to use another EC2 instance for running the loader script and analyzing the results. During the CloudFormation stack setup, provide information for the PostgreSQL instance where you want to load the Snapper output. Once the stack setup is complete, go to the **Import Snapper Output** section below.
+Follow the Quick Start above if you want to use another EC2 instance for running the loader script and analyzing the results. During the CloudFormation stack setup, provide information for the PostgreSQL instance where you want to load PGSnapper generated output. Once the stack setup is complete, go to the **Import PGSnapper Output** section below.
 
-If you are using the same EC2 instance you used for Snapper, complete the following steps to use another PostgreSQL instance to load Snapper output and analyze the results.
+If you are using the same EC2 instance you used for PGSnapper, complete the following steps to use another PostgreSQL instance to load PGSnapper output and analyze the results.
 
-1. Store database master credential of the PostgreSQL instance where the snapper output will be loaded in [AWS secret manager](https://docs.aws.amazon.com/secretsmanager/latest/userguide/manage_create-basic-secret.html) and note down the secret ARN. This needs to be provided as a parameter to the loader script to retrieve database credential for logging into the PostgreSQL instance.
+1. Store database master credential of the PostgreSQL instance where the PGSnapper output will be loaded in [AWS secret manager](https://docs.aws.amazon.com/secretsmanager/latest/userguide/manage_create-basic-secret.html) and note down the secret ARN. This needs to be provided as a parameter to the loader script to retrieve database credential for logging into the PostgreSQL instance.
 
 1.  Select the IAM role assigned to the EC2 instance, expand the **secret-access-policy** Policy on the **Permissions** tab and click **Edit policy**. Click on **JSON** tab and modify the policy as follows specifying the AWS secretes managers secret ARNs for both the PostgreSQL instances.
 
@@ -182,9 +182,9 @@ If you are using the same EC2 instance you used for Snapper, complete the follow
 	}
 	```
 
-## Import Snapper Output
+## Import PGSnapper Output
 
-1. Download the snapper outputs from the provided pre-signed S3 URL.
+1. Download the PGSnapper generated output from the provided pre-signed S3 URL.
 
 	```bash
 	cd /home/ec2-user/scripts
@@ -192,12 +192,12 @@ If you are using the same EC2 instance you used for Snapper, complete the follow
 	unzip snapper-output.zip
 	```
 
-2. Import the snapper output by running the following command line. For the **-o** parameter, provide the absolute path for the directory under which all the Snapper related .csv output files including all_ddls.sql are stored.
+2. Import PGSnapper output by running the following command line. For the **-o** parameter, provide the absolute path for the directory under which all the PGSnapper related .csv output files including all_ddls.sql are stored.
 
-   > **_NOTE:_** If you don't see **all_ddls.sql** in the same directory where all the Snapper related .csv output files are present, it means Snapper packaging was not run previously. Go back to [Packaging the Output](https://github.com/aws-samples/aurora-and-database-migration-labs/blob/master/Code/PGPerfStatsSnapper/README.md#packaging-the-output) section and follow the procedure. 
+   > **_NOTE:_** If you don't see **all_ddls.sql** in the same directory where all the PGSnapper related .csv output files are present, it means PGSnapper packaging was not run previously. Go back to [Packaging the Output](https://github.com/aws-samples/aurora-and-database-migration-labs/blob/master/Code/PGPerfStatsSnapper/README.md#packaging-the-output) section and follow the procedure. 
 
 	```bash
-	/home/ec2-user/scripts/pg_perf_stat_loader.py -e <PostgreSQL Instance EndPoint> -P <Port> -d postgres -u <Master UserName> -s <AWS Secretes Manager ARN. Cloudformation Output Key: PGSnapperSecretARN> -o <Staged snapper output directory> -r <AWS Region>
+	/home/ec2-user/scripts/pg_perf_stat_loader.py -e <PostgreSQL Instance EndPoint> -P <Port> -d postgres -u <Master UserName> -s <AWS Secretes Manager ARN. CloudFormation Output Key: PGSnapperSecretARN> -o <Staged PGSnapper output directory> -r <AWS Region>
 	```
 
 	e.g.
@@ -206,23 +206,23 @@ If you are using the same EC2 instance you used for Snapper, complete the follow
 	/home/ec2-user/scripts/pg_perf_stat_loader.py -e aurorapg.cluster-xxxxxxxxxxx.us-east-1.rds.amazonaws.com -P 5432 -d postgres -u masteruser -s arn:aws:secretsmanager:us-east-1:111111111111:secret:masteruser_secret-XbRXX -o /home/ec2-user/scripts/output/pgloadinst.cluster-xxxxxxxxxxxx.us-east-1.rds.amazonaws.com/postgres -r us-east-1
 	```
 
-# Uninstalling Snapper
+# Uninstalling PGSnapper
 
-To uninstall Snapper and delete related AWS resources, follow the steps below.
+To uninstall PGSnapper and delete related AWS resources, follow the steps below.
 
-1. Remove the inbound rule created for the Snapper EC2 host's security group (CloudFormation Logical ID: ```Ec2SecurityGroup```) from the target database's security group (```DBSecurityGroupID``` parameter value which you entered during setting up the stack) using [AWS EC2 console](https://console.aws.amazon.com/ec2/home?#SecurityGroups:).
+1. Remove the inbound rule created for the PGSnapper EC2 host's security group (CloudFormation Logical ID: ```Ec2SecurityGroup```) from the target database's security group (```DBSecurityGroupID``` parameter value which you entered during setting up the stack) using [AWS EC2 console](https://console.aws.amazon.com/ec2/home?#SecurityGroups:).
 
-2. Empty the S3 bucket (CloudFormation Logical ID: ```SnapperS3Bucket```) by following [Emptying a bucket](https://docs.aws.amazon.com/AmazonS3/latest/userguide/empty-bucket.html).
+2. Empty the S3 bucket (CloudFormation Logical ID: ```PGSnapperS3Bucket```) by following [Emptying a bucket](https://docs.aws.amazon.com/AmazonS3/latest/userguide/empty-bucket.html).
 
-3. Delete the Snapper CloudFormation Stack using [AWS CloudFormation console](https://console.aws.amazon.com/cloudformation/home?#/stacks?filteringStatus=active&filteringText=&viewNested=true&hideStacks=false).
+3. Delete the PGSnapper CloudFormation Stack using [AWS CloudFormation console](https://console.aws.amazon.com/cloudformation/home?#/stacks?filteringStatus=active&filteringText=&viewNested=true&hideStacks=false).
 
-# Sample queries for Snapper Data Analysis
+# Sample queries for PGSnapper Data Analysis
 
-Sample queries for snapper data analysis is available in [Github](https://github.com/aws-samples/aurora-and-database-migration-labs/tree/master/Code/PGPerfStatsSnapper/SQLs).
+Sample queries for PGSnapper data analysis is available in [Github](https://github.com/aws-samples/aurora-and-database-migration-labs/tree/master/Code/PGPerfStatsSnapper/SQLs).
 
 ## Download SQL files for analysis
 
-Download the SQLs to a machine where PSQL is installed and which has access to the PostgreSQL instance where snapper data was uploaded.
+Download the SQLs to a machine where PSQL is installed and which has access to the PostgreSQL instance where PGSnapper data was uploaded.
 
 ```bash
 cd /home/ec2-user/scripts
@@ -238,7 +238,7 @@ cd /home/ec2-user/scripts/SQLs
 
 \l+
 
-\c <database where snapper data is stored>
+\c <database where PGSnapper data is stored>
 
 
 postgres=> \i snappermenu.sql
@@ -313,9 +313,9 @@ Set Begin and End Snapshot ID for Analysis before running the analysis queries:
 => \i set_snaps.sql
 ```
 
-# Jupyter notebook for further exploration of snapper collected data
+# Jupyter notebook for further exploration of PGSnapper collected data
 
-A sample Jupyter notebook to analyze and plot graphs using snapper collected data is available in [Github](https://github.com/aws-samples/aurora-and-database-migration-labs/tree/master/Code/PGPerfStatsSnapper/Juypter).
+A sample Jupyter notebook to analyze and plot graphs using PGSnapper collected data is available in [Github](https://github.com/aws-samples/aurora-and-database-migration-labs/tree/master/Code/PGPerfStatsSnapper/Juypter).
 
 You can spin up a notebook instance using Amazon Sagemaker and import the sample .ipynb file to run the notebook and do further analysis.
 
