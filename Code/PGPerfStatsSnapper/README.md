@@ -10,19 +10,19 @@ The **PGSnapper** tool provided here enables periodic collection (snapping) of P
 
 1. When you create a new RDS PostgreSQL database or Aurora PostgreSQL cluster, it comes with default parameter groups, which cannot be updated. For RDS PostgreSQL, create a [custom DB parameter group](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithParamGroups.html) and associate it with the RDS instance. For Aurora PostgreSQL, create a [custom cluster parameter group along with a custom DB parameter group](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/USER_WorkingWithParamGroups.html). Associate the cluster parameter group with the Aurora cluster and the DB parameter group with the primary DB instance and the Aurora replicas.
 
-1. Modify [shared_preload_libraries](https://www.postgresql.org/docs/11/runtime-config-client.html) DB parameter and add **pg_stat_statements** extension. This can be set in DB Parameter group for RDS PostgreSQL and Cluster Parameter group for Aurora PostgreSQL. 
+2. Modify [shared_preload_libraries](https://www.postgresql.org/docs/11/runtime-config-client.html) DB parameter and add **pg_stat_statements** extension. This can be set in DB Parameter group for RDS PostgreSQL and Cluster Parameter group for Aurora PostgreSQL. 
 
-1. Modify **track_functions** parameter and set to **all** to track procedural-language, SQL and C language functions. This can be set in DB Parameter group for RDS PostgreSQL and Cluster Parameter group for Aurora PostgreSQL.
+3. Modify **track_functions** parameter and set to **all** to track procedural-language, SQL and C language functions. This can be set in DB Parameter group for RDS PostgreSQL and Cluster Parameter group for Aurora PostgreSQL.
 
-1. Set **track_activity_query_size** parameter to the max value **102400** to capture the full text of very long SQL statements. This can be set in DB Parameter group for RDS PostgreSQL and Cluster Parameter group for Aurora PostgreSQL.
+4. Set **track_activity_query_size** parameter to the max value **102400** to capture the full text of very long SQL statements. This can be set in DB Parameter group for RDS PostgreSQL and Cluster Parameter group for Aurora PostgreSQL.
 
-1. Verify and save the parameter updates.
+5. Verify and save the parameter updates.
 
-![](media/dbparams.png)
+    ![](media/dbparams.png)
 
-1. **shared_preload_libraries** and **track_activity_query_size** parameters are static. For them to take effect, reboot the database instance.
+6. **shared_preload_libraries** and **track_activity_query_size** parameters are static. For them to take effect, reboot the database instance.
 
-1. Create **pg_stat_statements** extension in the PostgreSQL database where application related objects are stored by running the following command.
+7. Create **pg_stat_statements** extension in the PostgreSQL database where application related objects are stored by running the following command.
  
 	```bash
 	/usr/local/pgsql/bin/psql --host=<PostgreSQL Instance EndPoint> --port=<Port> --username=<Master UserName> --dbname=<Database Name where Application objects are stored>
