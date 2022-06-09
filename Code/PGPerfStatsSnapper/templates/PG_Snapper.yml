@@ -361,6 +361,9 @@ Resources:
       
   SnapperInstance:
     Type: AWS::EC2::Instance
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT15M
     Properties:
       InstanceType:
         Ref: InstanceType
@@ -438,7 +441,15 @@ Resources:
                 chown -R ec2-user:ec2-user /home/ec2-user/scripts
                 chmod 755 pg_perf_stat_snapper.py
                 chmod 755 pg_perf_stat_loader.py
-                echo "$(date "+%F %T") * Finished downloading PGSnapper scripts" >> /debug.log           
+                echo "$(date "+%F %T") * Finished downloading PGSnapper scripts" >> /debug.log
+                
+                echo "$(date "+%F %T") * Updating /home/ec2-user/.bash_profile with required env variables" >> /debug.log
+                echo "export PATH=\$PATH:/usr/local/pgsql/bin/" >> /home/ec2-user/.bash_profile
+                echo "export LD_LIBRARY_PATH=/usr/local/pgsql/lib" >> /home/ec2-user/.bash_profile
+                echo "$(date "+%F %T") * Finished updating /home/ec2-user/.bash_profile" >> /debug.log
+                
+                echo "$(date "+%F %T") * Sending cfn signal" >> /debug.log
+                /opt/aws/bin/cfn-signal -e 0 --stack ${AWS::StackName} --resource SnapperInstance --region ${AWS::Region}
                 
 Outputs:
 
