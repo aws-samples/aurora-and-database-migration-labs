@@ -16,7 +16,7 @@ The **PGSnapper** tool provided here enables periodic collection (snapping) of P
 
 1. Set **track_activity_query_size** parameter to the max value **102400** to capture the full text of very long SQL statements. This can be set in DB Parameter group for RDS PostgreSQL and Cluster Parameter group for Aurora PostgreSQL.
 
-1.Verify and save the parameter updates.
+1. Verify and save the parameter updates.
 
 ![](media/dbparams.png)
 
@@ -99,7 +99,7 @@ The CloudFormation stack does the following setup in your AWS Account.
 
     Note that if you are specifying the output directory using the **-o** argument, the path needs to be specified as an absolute path e.g. /home/ec2-user/mysnapperoutput.
 
-6. Run PGSnapper manually once using the following command and review the log file generated under "/home/ec2-user/scripts/log/<ENDPOINT>/<DBNAME>/" directory. By default, all the output will be stored under "/home/ec2-user/scripts/output/<ENDPOINT>/<DBNAME>/" directory. If you don't see any error in the log file, proceed to the next step. For further troubleshooting, see the **Troubleshooting** section below.
+6. Run PGSnapper manually once using the following command and review the log file generated under "/home/ec2-user/scripts/log/\<ENDPOINT\>/\<DBNAME\>/" directory. By default, all the output will be stored under "/home/ec2-user/scripts/output/\<ENDPOINT\>/\<DBNAME\>/" directory. If you don't see any error in the log file, proceed to the next step. For further troubleshooting, see the **Troubleshooting** section below.
 
     ```bash
 	/home/ec2-user/scripts/pg_perf_stat_snapper.py -e <PostgreSQL Instance EndPoint> -P <Port> -d <Database Name where Application objects are stored> -u <Master UserName> -s <AWS Secretes Manager ARN. CloudFormation Output Key: PGSnapperSecretARN> -m snap -r <AWS Region>
