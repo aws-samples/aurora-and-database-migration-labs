@@ -393,12 +393,11 @@ Resources:
                 # start bootstrap
                 echo "$(date "+%F %T") * running as $(whoami)" >> /debug.log
       
-                # update SSM & upgrade packages
-                echo "$(date "+%F %T") * Updating SSM agent" >> /debug.log           
-                sudo yum install -y https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/linux_amd64/amazon-ssm-agent.rpm >> /debug.log
-                echo "$(date "+%F %T") * Finished updating SSM agent" >> /debug.log
+                # Start SSM & upgrade packages
+                echo "$(date "+%F %T") * Starting SSM agent" >> /debug.log
                 sudo systemctl enable amazon-ssm-agent
                 sudo systemctl start amazon-ssm-agent
+                echo "$(date "+%F %T") * Finished starting SSM agent" >> /debug.log
                 source ~/.bashrc
                 echo "$(date "+%F %T") * Updating packages to the latest version" >> /debug.log
                 sudo yum update -y >> /debug.log
