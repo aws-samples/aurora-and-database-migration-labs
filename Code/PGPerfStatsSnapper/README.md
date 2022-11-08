@@ -22,7 +22,7 @@ The **PGSnapper** tool assists with periodic collection (snapping) of PostgreSQL
 
 6. Reboot the database instance. The **shared_preload_libraries** and **track_activity_query_size parameters** are static and require an instance reboot for them to take effect.
 
-7. Create a database user which PGSnapper will use to connect to the PostgreSQL instance, collect database metrics and load it for analysis. You can use psql or any PostgreSQL GUI client such as pgAdmin for running the command below after updating the placeholder specified by **<>**.
+7. Create a database user which PGSnapper will use to connect to the PostgreSQL instance for metrics collection and loading later. You can use psql or any PostgreSQL GUI client such as pgAdmin for running the command below after updating the placeholder specified by **<>**.
 
 	```bash
 	/usr/local/pgsql/bin/psql --host=<PostgreSQL Instance EndPoint> --port=<Port> --username=<Master UserName> --dbname=postgres
@@ -48,7 +48,7 @@ The CloudFormation stack does the following setup in your AWS Account.
 * Creates an S3 bucket which you can use for storing and sharing PGSnapper output.
 * Adds the security group for the EC2 instance to the security group assigned to the PostgreSQL instance for inbound network access.
 
-1. Click [<img src="media/cloudformation-launch-stack.png">](https://console.aws.amazon.com/cloudformation/home?#/stacks/create/review?stackName=pg-snapper&templateURL=https://auroraworkshopassets.s3-us-west-2.amazonaws.com/templates/pg-snapper/PG_Snapper.yml) to deploy the CloudFormation stack in your AWS account in the Region where the PostgreSQL instance to be monitored is running. The CloudFormation stack requires a few parameters, as shown in the following screenshot. Enter the parameter values by referring their description and click **Create Stack**.
+1. Click [<img src="media/cloudformation-launch-stack.png">](https://console.aws.amazon.com/cloudformation/home?#/stacks/create/review?stackName=pg-snapper&templateURL=https://auroraworkshopassets.s3-us-west-2.amazonaws.com/templates/pg-snapper/PG_Snapper.yml) to deploy the CloudFormation stack in your AWS account in the Region where the PostgreSQL instance to be monitored is running. The CloudFormation stack requires a few parameters, as shown in the following table. Enter the parameter values by referring their description and click **Create Stack**.
 
 | Parameter | Description |
 | --- | --- |
@@ -132,6 +132,8 @@ The CloudFormation stack does the following setup in your AWS Account.
 
 ## Packaging the Output
 
+PGSnapper packaging exports other database dictionary views and queries output mentioned in its config file, which are only required to be snapped once. It also generates a DDL command file, which the Loader script uses for creating staging tables and importing the PGSnapper output.
+
 1. Package PGSnapper output by running the following:
 	```bash
 	/home/ec2-user/scripts/pg_perf_stat_snapper.py -e <PostgreSQL Instance EndPoint> -P <Port> -d <Database Name where Application objects are stored> -u <Database username e.g. pgsnapper> -s <AWS Secretes Manager ARN. CloudFormation Output Key: PGSnapperSecretARN> -m package -r <AWS Region>
@@ -144,7 +146,7 @@ The CloudFormation stack does the following setup in your AWS Account.
 	aws s3 cp pg-snapper-output.zip s3://pg-snapper-output/
 	aws s3 presign s3://pg-snapper-output/pg-snapper-output.zip --expires-in 604800
 	```
-3. Share the S3 URL for loading PGSnapper output and perform further analysis.
+3. Share the S3 URL with another team as needed for loading PGSnapper output and perform further analysis.
 
 ## Troubleshooting
 
@@ -177,7 +179,7 @@ create user pgsnapper password '<pasword>' CREATEDB in role pg_monitor;
 	
 ### Using a different EC2 instance for running Loader Scripts
 
-Follow the Quick Start above if you want to use another EC2 instance for running the loader script and analyzing the results. During the CloudFormation stack setup, provide information for the PostgreSQL instance where you want to load PGSnapper generated output. Once the stack setup is complete, go to the **Import PGSnapper Output** section below.
+Follow the [Quick Start](https://github.com/aws-samples/aurora-and-database-migration-labs/blob/master/Code/PGPerfStatsSnapper/README.md#quick-start) above if you want to use another EC2 instance for running the loader script and analyzing the results. During the CloudFormation stack setup, provide information for the PostgreSQL instance where you want to load PGSnapper generated output. Once the stack setup is complete, go to the **Import PGSnapper Output** section below.
 
 ### Using the same EC2 instance for running Loader Scripts
 
