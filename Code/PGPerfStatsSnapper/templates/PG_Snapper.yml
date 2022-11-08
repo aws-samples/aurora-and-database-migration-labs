@@ -36,13 +36,13 @@ Parameters:
     MaxValue: 16384
  
   DBUsername:
-    Description: Master User Name for the PostgreSQL Instance to be monitored
+    Description: Database User Name for the PostgreSQL Instance to be monitored
     Type: String
     MinLength: '1'
     MaxLength: '16'
     
-  PGMasterUserPassword:
-    Description: Master User Password for the PostgreSQL Instance to be monitored
+  DBUserPassword:
+    Description: Database User Password for the PostgreSQL Instance to be monitored
     Type: String
     MaxLength: '32'
     MinLength: '8'
@@ -69,11 +69,12 @@ Metadata:
           default: Amazon EC2 configuration
         Parameters:
           - InstanceType
+          - EBSVolSize
       - Label:
           default: Database settings
         Parameters:
           - DBUsername
-          - PGMasterUserPassword
+          - DBUserPassword
           - DBPort
              
 Rules:
@@ -260,12 +261,12 @@ Resources:
             reason: "Using Default AWS managed key aws/secretsmanager"
     Properties:
       Name: !Join ['/', ['PGSnapper', !Ref 'AWS::StackName']]
-      Description: !Join ['', ['PGSnapper PostgreSQL Master User Secret ', 'for CloudFormation Stack ', !Ref 'AWS::StackName']]
+      Description: !Join ['', ['PGSnapper PostgreSQL Database User Secret ', 'for CloudFormation Stack ', !Ref 'AWS::StackName']]
       Tags:
         -
           Key: StackID
           Value: !Ref 'AWS::StackId'
-      SecretString: !Sub '{ "username" : "${DBUsername}", "password" : "${PGMasterUserPassword}" }'
+      SecretString: !Sub '{ "username" : "${DBUsername}", "password" : "${DBUserPassword}" }'
  
   S3Bucket:
     Type: AWS::S3::Bucket
@@ -461,7 +462,7 @@ Outputs:
     Value: !Ref SnapperInstance
     
   PGSnapperSecretARN:
-    Description: Master User Secret ARN for the PostgreSQL Instance to be monitored
+    Description: Database User Secret ARN for the PostgreSQL Instance to be monitored
     Value: !Ref PGSnapperSecret
     
   PGSnapperS3Bucket:

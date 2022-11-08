@@ -1,8 +1,8 @@
 # PostgreSQL Performance Stats Snapper (PGSnapper)
 
-While doing load testing on [Amazon RDS](https://aws.amazon.com/rds/postgresql/) and [Amazon Aurora PostgreSQL](https://aws.amazon.com/rds/aurora/postgresql-features/) for proof of concept (POC) or for testing the impact of any configuration or code change, its important to collect all the database performance related metrics periodically at regular intervals so that you can go back in time and do performance analysis. [RDS Enhanced Monitoring](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_Monitoring.OS.html) and [RDS Performance Insights](https://aws.amazon.com/rds/performance-insights/) collect a lot of host and database performance metrics and provide dashboards for viewing the historical data. There are a lot of other database engine specific performance statistics and metrics, which can be collected to assist with deep dive analysis of performance problems post the load testing.
+While doing load testing on [Amazon RDS](https://aws.amazon.com/rds/postgresql/) and [Amazon Aurora PostgreSQL](https://aws.amazon.com/rds/aurora/postgresql-features/) for proof of concept (POC) or for testing the impact of any configuration or code change, its important to collect all the database performance related metrics periodically at regular intervals so that you can go back in time and do performance analysis. Although you can use a variety of AWS services such as [Amazon RDS Enhanced Monitoring](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_Monitoring.OS.html), [Amazon CloudWatch](http://aws.amazon.com/cloudwatch), and [Amazon RDS Performance Insights](https://aws.amazon.com/rds/performance-insights/) to view database performance metrics, sometimes you need additional database engine-specific metrics to identify database performance problems. 
 
-The **PGSnapper** tool provided here enables periodic collection (snapping) of PostgreSQL performance related statistics and metrics. The config file used by the tool can be customized to include database dictionary views and custom queries to be snapped.  PGSnapper collects and exports the PostgreSQL database metrics in separate physical files on the host its running to have minimal impact on the database. These files can be loaded to another PostgreSQL instance using the loader script included in the tool for analysis.
+The **PGSnapper** tool assists with periodic collection (snapping) of PostgreSQL performance related statistics and metrics. The config file used by the tool can be customized to include database dictionary views and custom queries to be snapped.  PGSnapper collects and exports the PostgreSQL database metrics in separate CSV formatted files on the host its running to have minimal impact on the database. These files can be loaded to another PostgreSQL instance using the loader script included in the tool for analysis.
 
 :warning: You must accept all the risks associated with production use of **PGSnapper** in regards to unknown/undesirable consequences. If you do not assume all the associated risks, you shouldn't be using this tool.
 
@@ -10,7 +10,7 @@ The **PGSnapper** tool provided here enables periodic collection (snapping) of P
 
 1. When you create a new RDS PostgreSQL database or Aurora PostgreSQL cluster, it comes with default parameter groups, which cannot be updated. For RDS PostgreSQL, create a [custom DB parameter group](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithParamGroups.html) and associate it with the RDS instance. For Aurora PostgreSQL, create a [custom cluster parameter group along with a custom DB parameter group](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/USER_WorkingWithParamGroups.html). Associate the cluster parameter group with the Aurora cluster and the DB parameter group with the primary DB instance and the Aurora replicas.
 
-2. Modify [shared_preload_libraries](https://www.postgresql.org/docs/11/runtime-config-client.html) DB parameter and add **pg_stat_statements** extension. This can be set in DB Parameter group for RDS PostgreSQL and Cluster Parameter group for Aurora PostgreSQL. 
+2. Modify [shared_preload_libraries](https://www.postgresql.org/docs/11/runtime-config-client.html) DB parameter and add **pg_stat_statements** extension if not already there. This can be set in DB Parameter group for RDS PostgreSQL and Cluster Parameter group for Aurora PostgreSQL. 
 
 3. Modify **track_functions** parameter and set to **all** to track procedural-language, SQL and C language functions. This can be set in DB Parameter group for RDS PostgreSQL and Cluster Parameter group for Aurora PostgreSQL.
 
@@ -20,9 +20,17 @@ The **PGSnapper** tool provided here enables periodic collection (snapping) of P
 
     ![](media/dbparams.png)
 
-6. **shared_preload_libraries** and **track_activity_query_size** parameters are static. For them to take effect, reboot the database instance.
+6. Reboot the database instance. The **shared_preload_libraries** and **track_activity_query_size parameters** are static and require an instance reboot for them to take effect.
 
-7. Create **pg_stat_statements** extension in the PostgreSQL database where application related objects are stored by running the following command.
+7. Create a database user which PGSnapper will use to connect to the PostgreSQL instance, collect database metrics and load it for analysis. You can use psql or any PostgreSQL GUI client such as pgAdmin for running the command below after updating the placeholder specified by **<>**.
+
+	```bash
+	/usr/local/pgsql/bin/psql --host=<PostgreSQL Instance EndPoint> --port=<Port> --username=<Master UserName> --dbname=postgres
+	
+	create user pgsnapper password '<pasword>' CREATEDB in role pg_monitor;
+	```
+
+8. Load **pg_stat_statements** extension into the PostgreSQL database where application related objects are stored by running the following command.
  
 	```bash
 	/usr/local/pgsql/bin/psql --host=<PostgreSQL Instance EndPoint> --port=<Port> --username=<Master UserName> --dbname=<Database Name where Application objects are stored>
@@ -34,7 +42,7 @@ The **PGSnapper** tool provided here enables periodic collection (snapping) of P
 ## Quick Start
 
 The CloudFormation stack does the following setup in your AWS Account.
-* Stores the database master password in an AWS Secrets Manager secret which PGSnapper uses to connect to the PostgreSQL instance.
+* Stores the database user password in a Secrets Manager secret, which PGSnapper uses to connect to the PostgreSQL instance
 * Creates an EC2 instance with the latest Amazon Linux 2 AMI and deploys it in the same VPC and Subnet as the PostgreSQL database instance.
 * Bootstraps the EC2 instance by installing AWS Systems Manager(SSM) agent, PostgreSQL Client, required Python packages and staging PGSnapper scripts.
 * Creates an S3 bucket which you can use for storing and sharing PGSnapper output.
@@ -42,18 +50,17 @@ The CloudFormation stack does the following setup in your AWS Account.
 
 1. Click [<img src="media/cloudformation-launch-stack.png">](https://console.aws.amazon.com/cloudformation/home?#/stacks/create/review?stackName=pg-snapper&templateURL=https://auroraworkshopassets.s3-us-west-2.amazonaws.com/templates/pg-snapper/PG_Snapper.yml) to deploy the CloudFormation stack in your AWS account in the Region where the PostgreSQL instance to be monitored is running. The CloudFormation stack requires a few parameters, as shown in the following screenshot. Enter the parameter values by referring their description and click **Create Stack**.
 
-    ![](media/cfn-stack-parameters-merged.png)
-
 | Parameter | Description |
 | --- | --- |
-| VPCID | VPC ID of PostgreSQL database instance (e.g., vpc-0343606e) to be monitored |
-| SubnetID | VPC Subnet ID of the PostgreSQL database instance (e.g., subnet-a0246dcd) to be monitored |
-| DBSecurityGroupID | Security Group ID of the PostgreSQL database instance (e.g., sg-8c14mg64) to be monitored |
-| InstanceType | PGSnapper EC2 instance type. Leave the default value |
-| DBUsername | Master User Name for the PostgreSQL Instance to be monitored |
-| PGMasterUserPassword | Master User Password for the PostgreSQL Instance to be monitored |
-| DBPort | Port for the PostgreSQL Instance to be monitored |
-| EBSVolSize | PGSnapper EC2 instance EBS Volume Size in GiB |
+| VPCID | VPC ID of PostgreSQL database instance (e.g., vpc-0343606e) to be monitored. |
+| SubnetID | VPC Subnet ID of the PostgreSQL database instance (e.g., subnet-a0246dcd) to be monitored. |
+| DBSecurityGroupID | Security Group ID of the PostgreSQL database instance (e.g., sg-8c14mg64) to be monitored. |
+| InstanceType | PGSnapper EC2 instance type. Leave the default value. |
+| EBSVolSize | PGSnapper EC2 instance EBS Volume Size in GiB. |
+| DBUsername | Database user name for the PostgreSQL instance to be monitored e.g., pgsnapper |
+| DBUserPassword | Database user password for the PostgreSQL instance to be monitored. |
+| DBPort | Port for the PostgreSQL Instance to be monitored. |
+
 
 2. Wait for the stack creation to complete. It takes about 7 minutes to complete. Click the **Outputs** tab of the stack and note down the resources that you will need for configuring PGSnapper.
 
@@ -102,13 +109,13 @@ The CloudFormation stack does the following setup in your AWS Account.
 6. Run PGSnapper manually once using the following command and review the log file generated under "/home/ec2-user/scripts/log/\<ENDPOINT\>/\<DBNAME\>/" directory. By default, all the output will be stored under "/home/ec2-user/scripts/output/\<ENDPOINT\>/\<DBNAME\>/" directory. If you don't see any error in the log file, proceed to the next step. For further troubleshooting, see the **Troubleshooting** section below.
 
     ```bash
-	/home/ec2-user/scripts/pg_perf_stat_snapper.py -e <PostgreSQL Instance EndPoint> -P <Port> -d <Database Name where Application objects are stored> -u <Master UserName> -s <AWS Secretes Manager ARN. CloudFormation Output Key: PGSnapperSecretARN> -m snap -r <AWS Region>
+	/home/ec2-user/scripts/pg_perf_stat_snapper.py -e <PostgreSQL Instance EndPoint> -P <Port> -d <Database Name where Application objects are stored> -u <Database username e.g. pgsnapper> -s <AWS Secretes Manager ARN. CloudFormation Output Key: PGSnapperSecretARN> -m snap -r <AWS Region>
 	```
 
 7. Schedule PGSnapper in crontab to run every 1 minute. 
 
 	```bash
-	*/1 * * * * /home/ec2-user/scripts/pg_perf_stat_snapper.py -e <PostgreSQL Instance EndPoint> -P <Port> -d <Database Name where Application objects are stored> -u <Master UserName> -s <AWS Secretes Manager ARN. CloudFormation Output Key: PGSnapperSecretARN> -m snap -r <AWS Region>
+	*/1 * * * * /home/ec2-user/scripts/pg_perf_stat_snapper.py -e <PostgreSQL Instance EndPoint> -P <Port> -d <Database Name where Application objects are stored> -u <Database username e.g. pgsnapper> -s <AWS Secretes Manager ARN. CloudFormation Output Key: PGSnapperSecretARN> -m snap -r <AWS Region>
 	```
 
 ## Load Test
@@ -127,7 +134,7 @@ The CloudFormation stack does the following setup in your AWS Account.
 
 1. Package PGSnapper output by running the following:
 	```bash
-	/home/ec2-user/scripts/pg_perf_stat_snapper.py -e <PostgreSQL Instance EndPoint> -P <Port> -d <Database Name where Application objects are stored> -u <Master UserName> -s <AWS Secretes Manager ARN. CloudFormation Output Key: PGSnapperSecretARN> -m package -r <AWS Region>
+	/home/ec2-user/scripts/pg_perf_stat_snapper.py -e <PostgreSQL Instance EndPoint> -P <Port> -d <Database Name where Application objects are stored> -u <Database username e.g. pgsnapper> -s <AWS Secretes Manager ARN. CloudFormation Output Key: PGSnapperSecretARN> -m package -r <AWS Region>
 	```
 2. Zip the output and log directory, upload to the S3 bucket created by the CloudFormation Stack (CloudFormation Output Key: PGSnapperS3Bucket) and create a pre-signed URL of the zip file. In the example below ```s3://pg-snapper-output/``` is the bucket used for uploading the zip file.
 	```bash
@@ -144,7 +151,7 @@ The CloudFormation stack does the following setup in your AWS Account.
 1. If you are seeing the error message "ERROR: Unexpected error: Couldn't connect to the PostgreSQL instance." while running PGSnapper, the stored password in AWS Secrets Manager secret might not be correct. You can view the password by going to [AWS Secrets Manager console](https://console.aws.amazon.com/secretsmanager/home?#/listSecrets), selecting the secret created by CloudFormation (CloudFormation Output Key: PGSnapperSecretARN) and selecting **Retrieve secret value**. Try to logon to the PostgreSQL database using the retrieved password as follows and see if you are able to connect to it. If the password is incorrect, you can edit the password stored in AWS Secrets Manager secret by selecting the **Edit** button on the same page.
 
     ```bash
-	/usr/local/pgsql/bin/psql --host=<PostgreSQL Instance EndPoint> --port=<Port> --username=<Master UserName> --dbname=<Database Name where Application objects are stored>
+	/usr/local/pgsql/bin/psql --host=<PostgreSQL Instance EndPoint> --port=<Port> --username=<Database username e.g. pgsnapper> --dbname=<Database Name where Application objects are stored>
 	```
 
 2. If you are seeing the error message "ERROR: Another instance of PGSnapper is already running for the same DBHOST and database. Exiting ..." while running PGSnapper, this means that another instance of PGSnapper is already running for the same PostgreSQL database or PGSnapper was terminated abnormally during the previous run. PGSnapper creates a hidden file under "/home/ec2-user/scripts/" sub-directory to make sure only one instance of PGSnapper is running at a time for a particular PostgreSQL database. The file name is in the format ".snapper_\<DBHOST\>_\<DBNAME\>.running". If PGSnapper was killed abnormally for some reason and the ".running" file was not deleted, you need to delete this file manually before you can re-run PGSnapper.
@@ -160,11 +167,23 @@ To load and analyze the metrics collected by PGSnapper, follow the steps below.
 
 ## Setup
 
+Create a database user in the PostgreSQL instance which PGSnapper will use to connect and load the collected metrics. You can use psql or any PostgreSQL GUI client such as pgAdmin for running the command below after updating the placeholder specified by **<>**.
+
+```bash
+/usr/local/pgsql/bin/psql --host=<PostgreSQL Instance EndPoint> --port=<Port> --username=<Master UserName> --dbname=postgres
+	
+create user pgsnapper password '<pasword>' CREATEDB in role pg_monitor;
+```
+	
+### Using a different EC2 instance for running Loader Scripts
+
 Follow the Quick Start above if you want to use another EC2 instance for running the loader script and analyzing the results. During the CloudFormation stack setup, provide information for the PostgreSQL instance where you want to load PGSnapper generated output. Once the stack setup is complete, go to the **Import PGSnapper Output** section below.
 
-If you are using the same EC2 instance you used for PGSnapper, complete the following steps to use another PostgreSQL instance to load PGSnapper output and analyze the results.
+### Using the same EC2 instance for running Loader Scripts
 
-1. Store database master credential of the PostgreSQL instance where the PGSnapper output will be loaded in [AWS secret manager](https://docs.aws.amazon.com/secretsmanager/latest/userguide/manage_create-basic-secret.html) and note down the secret ARN. This needs to be provided as the value of the argument **-s** while running the loader script to retrieve database credential for logging into the PostgreSQL instance.
+If you are using the same EC2 instance you used for PGSnapper, complete the following steps to use another PostgreSQL instance to load PGSnapper output. Once the stack setup is complete, go to the **Import PGSnapper Output** section below.
+
+1. Store database database user credential of the PostgreSQL instance where the PGSnapper output will be loaded in [AWS secret manager](https://docs.aws.amazon.com/secretsmanager/latest/userguide/manage_create-basic-secret.html) and note down the secret ARN. This needs to be provided as the value of the argument **-s** while running the loader script to retrieve database credential for logging into the PostgreSQL instance.
 
 1.  Select the IAM role assigned to the EC2 instance, expand the **secret-access-policy** Policy on the **Permissions** tab and click **Edit policy**. Click on **JSON** tab and modify the policy as follows specifying the AWS secretes managers secret ARNs for both the PostgreSQL instances.
 
@@ -201,13 +220,13 @@ If you are using the same EC2 instance you used for PGSnapper, complete the foll
    > **_NOTE:_** If you don't see **all_ddls.sql** in the same directory where all the PGSnapper related .csv output files are present, it means PGSnapper packaging was not run previously. Go back to [Packaging the Output](https://github.com/aws-samples/aurora-and-database-migration-labs/blob/master/Code/PGPerfStatsSnapper/README.md#packaging-the-output) section and follow the procedure. 
 
 	```bash
-	/home/ec2-user/scripts/pg_perf_stat_loader.py -e <PostgreSQL Instance EndPoint> -P <Port> -d postgres -u <Master UserName> -s <AWS Secretes Manager ARN. CloudFormation Output Key: PGSnapperSecretARN> -o <Staged PGSnapper output directory> -r <AWS Region>
+	/home/ec2-user/scripts/pg_perf_stat_loader.py -e <PostgreSQL Instance EndPoint> -P <Port> -d postgres -u <Database username e.g. pgsnapper> -s <AWS Secretes Manager ARN. CloudFormation Output Key: PGSnapperSecretARN> -o <Staged PGSnapper output directory> -r <AWS Region>
 	```
 
 	e.g.
 
 	```bash
-	/home/ec2-user/scripts/pg_perf_stat_loader.py -e aurorapg.cluster-xxxxxxxxxxx.us-east-1.rds.amazonaws.com -P 5432 -d postgres -u masteruser -s arn:aws:secretsmanager:us-east-1:111111111111:secret:masteruser_secret-XbRXX -o /home/ec2-user/scripts/output/pgloadinst.cluster-xxxxxxxxxxxx.us-east-1.rds.amazonaws.com/postgres -r us-east-1
+	/home/ec2-user/scripts/pg_perf_stat_loader.py -e aurorapg.cluster-xxxxxxxxxxx.us-east-1.rds.amazonaws.com -P 5432 -d postgres -u pgsnapper -s arn:aws:secretsmanager:us-east-1:111111111111:secret:pgsnapper_secret-XbRXX -o /home/ec2-user/scripts/output/pgloadinst.cluster-xxxxxxxxxxxx.us-east-1.rds.amazonaws.com/postgres -r us-east-1
 	```
 
 # Uninstalling PGSnapper
