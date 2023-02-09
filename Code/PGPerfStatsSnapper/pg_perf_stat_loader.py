@@ -25,13 +25,13 @@ def getoptions():
 
     parser.add_argument("-P",
                         "--port",
-                        help="Port",
+                        help="PostgreSQL Instance Port",
                         required=True)
 
     parser.add_argument("-d",
                         "--dbname",
-                        help="Database Name",
-                        default='postgres')                      
+                        help="Database Name where PGSnapper collected performance statistics will be imported",
+                        required=True)                      
                         
     parser.add_argument("-u",
                         "--user",
@@ -74,15 +74,15 @@ def get_secret(secret_arn,region_name):
         )
     except ClientError as e:
         if e.response['Error']['Code'] == 'DecryptionFailureException':
-            logger.error("Secrets Manager can't decrypt the protected secret text using the provided KMS key")
+            logger.error("AWS Secrets Manager - Can't decrypt the protected secret text using the provided KMS key")
         elif e.response['Error']['Code'] == 'InternalServiceErrorException':
-            logger.error("An error occurred on the server side")
+            logger.error("AWS Secrets Manager - An error occurred on the server side")
         elif e.response['Error']['Code'] == 'InvalidParameterException':
-            logger.error("You provided an invalid value for a parameter")
+            logger.error("AWS Secrets Manager - You provided an invalid value for a parameter")
         elif e.response['Error']['Code'] == 'InvalidRequestException':
-            logger.error("You provided a parameter value that is not valid for the current state of the resource")
+            logger.error("AWS Secrets Manager - You provided a parameter value that is not valid for the current state of the resource")
         elif e.response['Error']['Code'] == 'ResourceNotFoundException':
-            logger.error("We can't find the resource that you asked for")
+            logger.error("AWS Secrets Manager - We can't find the resource that you asked for")
     else:
         # Decrypts secret using the associated KMS CMK.
         secret = json.loads(get_secret_value_response['SecretString'])['password']
@@ -95,7 +95,7 @@ def runcmd(command,secret):
     try:
         return subprocess.check_call(command, stderr=subprocess.STDOUT, shell=True) #nosec B602
     except Exception as e:
-        logger.error('Exception: ' + str(e).replace(secret,'*******'))
+        logger.error(str(e).replace(secret,'*******'))
         sys.exit()
     
     
@@ -130,6 +130,7 @@ if __name__ == "__main__":
     # create file handler and set level to INFO
     fh = logging.FileHandler(os.path.join(LOG_DIR,'pg_perf_stat_loader.log'))
     fh.setLevel(logging.INFO)
+    print('\nLog File: ' + fh.baseFilename)
 
     # create formatter
     formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
@@ -148,8 +149,11 @@ if __name__ == "__main__":
     
     logger.info('__________________________________________________________________________________________________________________')
     
+    logger.info ('Loading files in staging directory: ' + STAGING_DIR)
+    print('Loading files in staging directory: ' + STAGING_DIR + '\n')
+    
     if not os.path.exists(STAGING_DIR):
-        logger.error("ERROR: Staging Directory doesn't exist")
+        logger.error("Staging Directory doesn't exist")
         sys.exit()
     
     try:
@@ -157,17 +161,21 @@ if __name__ == "__main__":
         logger.info('SUCCESS: Password retrieval for PostgreSQL instance succeeded')
     
     except Exception as e:
-        logger.error('Exception: ' + str(e))
-        logger.error("ERROR: Unexpected error: Couldn't retrieve password for the PostgreSQL instance.")
+        logger.error(str(e))
+        logger.error("Unexpected error: Couldn't retrieve password for the PostgreSQL instance.")
         sys.exit()
         
     try:
-        ISV_DBNAME = input("Enter Database name to be created for importing PostgreSQL performance statistics:")
-    
-        logger.info('Setting up Database for importing PGSnapper related table(s) ...')
-        runcmd("PGPASSWORD='" + DBPASS + "'" + " /usr/local/pgsql/bin/psql --host=" + DBHOST + " --port=" + DBPORT + " --username=" + DBUSER + " --dbname=" + DBNAME + " --command='" + "CREATE DATABASE " +  ISV_DBNAME + ";'" + " --quiet" + " --echo-errors" + " 2>>" + os.path.join(LOG_DIR,'pg_perf_stat_loader.log'),DBPASS)
-        logger.info('Database ' + ISV_DBNAME + ' created for importing PGSnapper related table(s) ...')
-    
+        HOSTPORT=DBHOST + ':' + str(DBPORT)
+        my_connection = connect(database=DBNAME, host=HOSTPORT, user=DBUSER, password=DBPASS, connect_timeout = 30)
+        logger.info('SUCCESS: Connection to PostgreSQL instance ' + HOSTPORT + '/' + DBNAME + ' succeeded')
+        
+    except Exception as e:
+        logger.error(str(e).replace(DBPASS,'*******'))
+        logger.error("Unexpected error: Couldn't connect to the PostgreSQL instance.")
+        sys.exit()
+        
+    try:
         ddl_file_name = os.path.join(STAGING_DIR,'all_ddls.sql')
         
         if not os.path.exists(ddl_file_name):
@@ -175,22 +183,13 @@ if __name__ == "__main__":
             sys.exit()
     
         logger.info('Creating PGSnapper related table(s) ...')
-        runcmd("PGPASSWORD='" + DBPASS + "'" + " /usr/local/pgsql/bin/psql --host=" + DBHOST + " --port=" + DBPORT + " --username=" + DBUSER + " --dbname=" + ISV_DBNAME + " --file=" + ddl_file_name + " --quiet" + " --echo-errors" + " 2>>" + os.path.join(LOG_DIR,'pg_perf_stat_loader.log'),DBPASS)
+        runcmd("PGPASSWORD='" + DBPASS + "'" + " /usr/local/pgsql/bin/psql --host=" + DBHOST + " --port=" + DBPORT + " --username=" + DBUSER + " --dbname=" + DBNAME + " --file=" + ddl_file_name + " --quiet" + " --echo-errors" + " 2>>" + os.path.join(LOG_DIR,'pg_perf_stat_loader.log'),DBPASS)
         
     except Exception as e:
-        logger.error('Exception: ' + str(e).replace(DBPASS,'*******'))
-        logger.error("ERROR: Unexpected error: Couldn't run DCL/DDL statements in the PostgreSQL instance.")
+        logger.error(str(e).replace(DBPASS,'*******'))
+        logger.error("Unexpected error: Couldn't run DCL/DDL statements in the PostgreSQL instance.")
         sys.exit()
     
-    try:
-        HOSTPORT=DBHOST + ':' + str(DBPORT)
-        my_connection = connect(database=ISV_DBNAME, host=HOSTPORT, user=DBUSER, password=DBPASS, connect_timeout = 30)
-        logger.info('SUCCESS: Connection to PostgreSQL instance ' + HOSTPORT + '/' + ISV_DBNAME + ' succeeded')
-        
-    except Exception as e:
-        logger.error('Exception: ' + str(e).replace(DBPASS,'*******'))
-        logger.error("ERROR: Unexpected error: Couldn't connect to the PostgreSQL instance.")
-        sys.exit()
     
     try:
         load_obj_list=config['SNAP']
@@ -218,7 +217,7 @@ if __name__ == "__main__":
                                 f.close()
                         except Exception as e:
                             logger.error('  Error loading file: ' + filename)
-                            logger.error('   Exception: ' + str(e))
+                            logger.error('   ' + str(e))
                             logger.error('  Abandoning loading ...')
                             f.close()
                             cur.close()
@@ -236,4 +235,4 @@ if __name__ == "__main__":
         my_connection.close()
 
     except Exception as e:
-        logger.error('Exception: ' + str(e))
+        logger.error(str(e))

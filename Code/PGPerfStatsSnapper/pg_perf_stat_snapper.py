@@ -12,6 +12,7 @@ import json
 import os
 import subprocess #nosec B404
 import fileinput
+from datetime import datetime 
 
 
 def getoptions():
@@ -26,7 +27,7 @@ def getoptions():
 
     parser.add_argument("-P",
                         "--port",
-                        help="Port",
+                        help="PostgreSQL Instance Port",
                         required=True)
 
     parser.add_argument("-d",
@@ -80,15 +81,15 @@ def get_secret(secret_arn,region_name):
         )
     except ClientError as e:
         if e.response['Error']['Code'] == 'DecryptionFailureException':
-            logger.error("Secrets Manager can't decrypt the protected secret text using the provided KMS key")
+            logger.error("AWS Secrets Manager - Can't decrypt the protected secret text using the provided KMS key")
         elif e.response['Error']['Code'] == 'InternalServiceErrorException':
-            logger.error("An error occurred on the server side")
+            logger.error("AWS Secrets Manager - An error occurred on the server side")
         elif e.response['Error']['Code'] == 'InvalidParameterException':
-            logger.error("You provided an invalid value for a parameter")
+            logger.error("AWS Secrets Manager - You provided an invalid value for a parameter")
         elif e.response['Error']['Code'] == 'InvalidRequestException':
-            logger.error("You provided a parameter value that is not valid for the current state of the resource")
+            logger.error("AWS Secrets Manager - You provided a parameter value that is not valid for the current state of the resource")
         elif e.response['Error']['Code'] == 'ResourceNotFoundException':
-            logger.error("We can't find the resource that you asked for")
+            logger.error("AWS Secrets Manager - We can't find the resource that you asked for")
     else:
         # Decrypts secret using the associated KMS CMK.
         secret = json.loads(get_secret_value_response['SecretString'])['password']
@@ -101,7 +102,7 @@ def runcmd(command,secret):
     try:
         return subprocess.check_call(command, stderr=subprocess.STDOUT, shell=True) #nosec B602
     except Exception as e:
-        logger.error('Exception: ' + str(e).replace(secret,'*******'))
+        logger.error(str(e).replace(secret,'*******'))
         sys.exit()
     
     
@@ -143,6 +144,7 @@ if __name__ == "__main__":
     # create file handler and set level to INFO    
     fh = logging.FileHandler(os.path.join(LOG_DIR,'pg_perf_stat_snapper.log'))
     fh.setLevel(logging.INFO)
+    print('\nLog File: ' + fh.baseFilename)
 
     # create formatter
     formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
@@ -160,6 +162,8 @@ if __name__ == "__main__":
         config = json.load(f)
     
     
+    print('Output directory: ' + OUTPUT_DIR +'\n')
+    
     logger.info('__________________________________________________________________________________________________________________')
     
     
@@ -168,10 +172,11 @@ if __name__ == "__main__":
         HOSTPORT=DBHOST + ':' + str(DBPORT)
         my_connection = connect(database=DBNAME, host=HOSTPORT, user=DBUSER, password=DBPASS, connect_timeout = 30)
         logger.info('SUCCESS: Connection to PostgreSQL instance ' + HOSTPORT + '/' + DBNAME + ' succeeded')
+        print('SUCCESS: Connection to PostgreSQL instance ' + HOSTPORT + '/' + DBNAME + ' succeeded')
     
     except Exception as e:
-        logger.error('Exception: ' + str(e).replace(DBPASS,'*******'))
-        logger.error("ERROR: Unexpected error: Couldn't connect to the PostgreSQL instance.")
+        logger.error(str(e).replace(DBPASS,'*******'))
+        logger.error("Unexpected error: Couldn't connect to the PostgreSQL instance.")
         sys.exit()
     
     try:
@@ -199,13 +204,13 @@ if __name__ == "__main__":
             
             if MODE == 'snap':
                 
-                # Create PGSnapper running file to prevent concurrent script runs for same host and database combination
+                # Create PGSnapper lock file to prevent concurrent script runs for same host and database combination
                 RUNNING_FILE=os.path.join(os.path.dirname(__file__),'.snapper_' + DBHOST + '_' + DBNAME + '.running')
     
                 if os.path.exists(RUNNING_FILE):
                     
                     logger.info('+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++')
-                    logger.error("ERROR: Another instance of PGSnapper is already running for the same DBHOST and database. Exiting ... ")
+                    logger.error("Found lock file " + RUNNING_FILE + " - Another instance of PGSnapper seems to be running for the same DBHOST and database. Exiting ... ")
                     logger.info('+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++')
                     sys.exit()
                 else:
@@ -222,7 +227,8 @@ if __name__ == "__main__":
                 else:
                     snap_id = 1
                 
-                logger.info('Starting SNAP with snap_id=' + str(snap_id))
+                logger.info('Starting SNAP with snap_id=' + str(snap_id) + ' at ' + datetime.now().strftime("%m-%d-%Y %H:%M:%S.%f"))
+                print(datetime.now().strftime("%m-%d-%Y %H:%M:%S.%f") + ' - Starting SNAP with snap_id=' + str(snap_id))
                 
                 # Get Snap Begin Time
                 cur.execute("select clock_timestamp()")
@@ -252,7 +258,7 @@ if __name__ == "__main__":
                             f.close()
                     except Exception as e:
                         logger.error('  Error While running query: ' + query_str)
-                        logger.error('  Exception: ' + str(e))
+                        logger.error('  ' + str(e))
                         f.close()
                         cur.execute("rollback to savepoint sp")
                         continue
@@ -267,7 +273,8 @@ if __name__ == "__main__":
                     f.write(snap_md)
                     f.write('\n')
                 
-                logger.info('Finished SNAP with snap_id=' + str(snap_id))
+                logger.info('Finished SNAP with snap_id=' + str(snap_id) + ' at ' + datetime.now().strftime("%m-%d-%Y %H:%M:%S.%f"))
+                print(datetime.now().strftime("%m-%d-%Y %H:%M:%S.%f") + ' - Finished SNAP with snap_id=' + str(snap_id))
                 
                 # Snapping complete. Remove running file.
                 os.remove(RUNNING_FILE)
@@ -310,7 +317,7 @@ if __name__ == "__main__":
                             f.close()
                     except Exception as e:
                         logger.error('  Error While running query: ' + query_str)
-                        logger.error('  Exception: ' + str(e))
+                        logger.error('  ' + str(e))
                         f.close()
                         cur.execute("rollback to savepoint sp")
                         continue
@@ -402,11 +409,11 @@ if __name__ == "__main__":
                     for line in fileinput.input(os.path.join(OUTPUT_DIR, 'all_ddls.sql'), inplace=True):
                         print(line.replace(source_type, target_type), end='')
                         
-                logger.info('Packaging Completed Successfully ...')
-                print('Packaging Completed Successfully ...')
+                logger.info('PGSnapper packaging completed Successfully. Output ready to be loaded using pg_perf_stat_loader.py')
+                print('PGSnapper packaging completed Successfully. Output ready to be loaded using pg_perf_stat_loader.py')
                 
             else:
-                logger.error("ERROR: Invalid MODE specified")
+                logger.error("Invalid MODE specified")
             
             # Commit transaction and Close cursor, connection
             my_connection.commit()
@@ -418,4 +425,4 @@ if __name__ == "__main__":
                 runcmd("PGPASSWORD='" + DBPASS + "'" + " /usr/local/pgsql/bin/psql --host=" + DBHOST + " --port=" + DBPORT + " --username=" + DBUSER + " --dbname=" + DBNAME + " --quiet" + " --echo-errors" + " --command=" + '"' + drop_view_ddl + '"' + " 2>>" + os.path.join(LOG_DIR,'pg_perf_stat_snapper.log'),DBPASS)
                     
     except Exception as e:
-        logger.error('Exception: ' + str(e).replace(DBPASS,'*******'))
+        logger.error(str(e).replace(DBPASS,'*******'))
