@@ -10,7 +10,7 @@ Periodic metrics analysis is an analysis technique where you review the same set
 
 ## Solution Overview
 
-![](media/archdiagram.png)
+![](media/archdiagram.PNG)
 
 PGSnapper is written in Python. It uses a JSON config file that you can customize to include database dictionary views and queries, whose output you want to capture periodically. 
 
