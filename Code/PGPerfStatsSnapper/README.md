@@ -30,21 +30,23 @@ After PGSnapper is set up and scheduled to run periodically, you can use it for 
 
 Complete the following prerequisite steps before setting up PGSnapper. Note that some of the DB parameters updated in this section are static and require an instance reboot to take effect. 
 
-1. When you create a new RDS for PostgreSQL DB instance or Aurora PostgreSQL DB cluster, it comes with default parameter groups, which can't be updated. For RDS for PostgreSQL, create a [custom DB parameter group](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithParamGroups.html) and associate it with the RDS instance. For Aurora PostgreSQL, create a [custom cluster parameter group along with a custom DB parameter group](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/USER_WorkingWithParamGroups.html). Associate the cluster parameter group with the Aurora cluster and the DB parameter group with the primary DB instance and the Aurora replicas.
+1. If your PostgreSQL instance is hosted in a private subnet, ensure that an internet gateway is attached to the VPC and a NAT gateway has been created in the public subnet. This will allow the PGSnapper EC2 instance, deployed in the private subnet, to download the necessary packages from internet during the bootstrapping process. You can follow [AWS documentation](https://aws.amazon.com/premiumsupport/knowledge-center/nat-gateway-vpc-private-subnet/) to deploy a NAT gateway.
 
-2. Modify the [shared_preload_libraries](https://www.postgresql.org/docs/11/runtime-config-client.html) DB parameter and add **pg_stat_statements** extension if not already there. You can set this up in the DB parameter group for RDS for PostgreSQL and the cluster parameter group for Aurora PostgreSQL.
+2. When you create a new RDS for PostgreSQL DB instance or Aurora PostgreSQL DB cluster, it comes with default parameter groups, which can't be updated. For RDS for PostgreSQL, create a [custom DB parameter group](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithParamGroups.html) and associate it with the RDS instance. For Aurora PostgreSQL, create a [custom cluster parameter group along with a custom DB parameter group](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/USER_WorkingWithParamGroups.html). Associate the cluster parameter group with the Aurora cluster and the DB parameter group with the primary DB instance and the Aurora replicas.
 
-3. Modify the **track_functions** parameter and set to **all** to track procedural-language, SQL and C language functions. You can set this up in the DB parameter group for RDS for PostgreSQL and the cluster parameter group for Aurora PostgreSQL.
+3. Modify the [shared_preload_libraries](https://www.postgresql.org/docs/11/runtime-config-client.html) DB parameter and add **pg_stat_statements** extension if not already there. You can set this up in the DB parameter group for RDS for PostgreSQL and the cluster parameter group for Aurora PostgreSQL.
 
-4. Set the **track_activity_query_size** parameter to **102400** to capture the full text of very long SQL statements. You can set this up in the DB parameter group for RDS for PostgreSQL and the cluster parameter group for Aurora PostgreSQL.
+4. Modify the **track_functions** parameter and set to **all** to track procedural-language, SQL and C language functions. You can set this up in the DB parameter group for RDS for PostgreSQL and the cluster parameter group for Aurora PostgreSQL.
 
-5. Verify and save the parameter updates.
+5. Set the **track_activity_query_size** parameter to **102400** to capture the full text of very long SQL statements. You can set this up in the DB parameter group for RDS for PostgreSQL and the cluster parameter group for Aurora PostgreSQL.
+
+6. Verify and save the parameter updates.
 
     ![](media/dbparams.png)
 
-6. Reboot the database instance. The **shared_preload_libraries** and **track_activity_query_size parameters** are static and require an instance reboot for them to take effect.
+7. Reboot the database instance. The **shared_preload_libraries** and **track_activity_query_size parameters** are static and require an instance reboot for them to take effect.
 
-7. Create a database user which PGSnapper can use to connect to the PostgreSQL instance for collecting database metrics. You can use [psql](https://www.postgresql.org/docs/13/app-psql.html) or any PostgreSQL GUI client such as [pgAdmin](https://www.pgadmin.org/) for running the command below after updating the placeholder specified by **<>**.
+8. Create a database user which PGSnapper can use to connect to the PostgreSQL instance for collecting database metrics. You can use [psql](https://www.postgresql.org/docs/13/app-psql.html) or any PostgreSQL GUI client such as [pgAdmin](https://www.pgadmin.org/) for running the command below after updating the placeholder specified by **<>**.
 
 	```bash
 	/usr/local/pgsql/bin/psql --host=<RDS for PostgreSQL Endpoint / Aurora PostgreSQL cluster Endpoint> --port=<PostgreSQL Instance port e.g., 5432> --username=<RDS for PostgreSQL/ Aurora PostgreSQL cluster master username> --dbname=postgres
@@ -52,7 +54,7 @@ Complete the following prerequisite steps before setting up PGSnapper. Note that
 	create user pgsnapper password '<pasword>' in role pg_monitor;
 	```
 
-8. Load the **pg_stat_statements** extension into the PostgreSQL database, where application related objects are stored and which needs to be monitored, by running the following command.
+9. Load the **pg_stat_statements** extension into the PostgreSQL database, where application related objects are stored and which needs to be monitored, by running the following command.
  
 	```bash
 	/usr/local/pgsql/bin/psql --host=<RDS for PostgreSQL Endpoint / Aurora PostgreSQL cluster Endpoint> --port=<PostgreSQL Instance port e.g., 5432> --username=<RDS for PostgreSQL / Aurora PostgreSQL cluster master username> --dbname=<Database Name where Application objects are stored>
