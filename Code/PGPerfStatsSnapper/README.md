@@ -394,7 +394,6 @@ List all the snapshots available with sample start and end times, that PGSnapper
 Set the begin and end snapshot ID for analysis before running any of the analysis queries:
 
 ```bash
-=> \i list_snaps.sql
 => \i set_snaps.sql
 ```
 
